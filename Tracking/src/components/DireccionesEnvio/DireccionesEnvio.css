@@ -1,0 +1,326 @@
+/* src/components/DireccionesEnvio/DireccionesEnvio.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+
+.direcciones-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 40px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.direcciones-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.direcciones-header h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.direcciones-header p {
+  color: #A0AEC0;
+  font-size: 1rem;
+}
+
+/* Tarjeta de código del cliente */
+.codigo-cliente-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 30px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.codigo-icono {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.codigo-cliente-card h3 {
+  font-family: 'Cinzel', serif;
+  color: #D4AF37;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.codigo-grande {
+  font-size: 2.5rem;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 15px 25px;
+  border-radius: 12px;
+  letter-spacing: 3px;
+  color: #D4AF37;
+  font-weight: bold;
+  display: inline-block;
+  margin: 15px 0;
+  border: 1px dashed rgba(212, 175, 55, 0.5);
+}
+
+.codigo-cliente-card p {
+  color: #A0AEC0;
+  font-size: 0.9rem;
+}
+
+/* Selector de tipo de envío */
+.tipo-envio-selector {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.tipo-btn {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #A0AEC0;
+  padding: 12px 30px;
+  border-radius: 50px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tipo-btn:hover {
+  transform: translateY(-2px);
+  border-color: #D4AF37;
+  color: #E2E8F0;
+}
+
+.active-aereo {
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  color: #0B0F19;
+  border-color: #D4AF37;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.active-maritimo {
+  background: linear-gradient(135deg, #2c3e66 0%, #1a2a4a 100%);
+  color: white;
+  border-color: #2c3e66;
+  box-shadow: 0 4px 15px rgba(44, 62, 102, 0.3);
+}
+
+/* Tarjeta de dirección */
+.direccion-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  margin-bottom: 30px;
+}
+
+.direccion-card.aereo {
+  border-top: 3px solid #D4AF37;
+}
+
+.direccion-card.maritimo {
+  border-top: 3px solid #2c3e66;
+}
+
+.direccion-badge {
+  background: rgba(212, 175, 55, 0.1);
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  color: #D4AF37;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.direccion-card.maritimo .direccion-badge {
+  background: rgba(44, 62, 102, 0.2);
+  color: #8aa9c9;
+}
+
+.direccion-contenido {
+  padding: 25px;
+}
+
+.campo {
+  margin-bottom: 20px;
+}
+
+.campo label {
+  display: block;
+  color: #D4AF37;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.direccion-card.maritimo .campo label {
+  color: #5a7c9e;
+}
+
+.campo .valor {
+  color: #E2E8F0;
+  font-size: 1rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.nombre-destinatario {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  border-left: 2px solid #D4AF37;
+}
+
+.campo-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.instrucciones {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* Botón copiar */
+.direccion-actions {
+  padding: 0 25px 25px 25px;
+}
+
+.btn-copiar {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  border: none;
+  border-radius: 8px;
+  color: #0B0F19;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.85rem;
+}
+
+.btn-copiar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* Instrucciones paso a paso */
+.instrucciones-pasos {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 25px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.instrucciones-pasos h3 {
+  font-family: 'Cinzel', serif;
+  color: #D4AF37;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.pasos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.paso {
+  text-align: center;
+}
+
+.paso-numero {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  color: #0B0F19;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 40px;
+  margin-bottom: 10px;
+  font-family: 'Cinzel', serif;
+}
+
+.paso p {
+  color: #A0AEC0;
+  font-size: 0.85rem;
+}
+
+/* Nota importante */
+.direccion-nota {
+  padding: 20px;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.direccion-nota p {
+  color: #A0AEC0;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.direccion-nota strong {
+  color: #D4AF37;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .direcciones-container {
+    padding: 20px;
+  }
+  
+  .campo-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .tipo-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+  }
+  
+  .codigo-grande {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+  }
+  
+  .direcciones-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .pasos-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}

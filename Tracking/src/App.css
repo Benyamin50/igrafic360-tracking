@@ -1,0 +1,470 @@
+/* =========================================
+   IMPORTACIONES Y VARIABLES BÁSICAS
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Quita el flash azul feo al tocar en móviles */
+}
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  background-color: #0B0F19; /* Azul medianoche ultra oscuro */
+  color: #E2E8F0; /* Texto claro elegante */
+  overflow-x: hidden; /* CRÍTICO: Evita scroll horizontal en móviles */
+}
+
+.app-container {
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, #162032 0%, #0B0F19 60%);
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px 50px 20px;
+  flex-grow: 1;
+}
+
+/* =========================================
+   BARRA DE NAVEGACIÓN VIP (GLASSMORPHISM)
+   ========================================= */
+.app-header-vip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 5%; /* % para adaptarse a cualquier pantalla */
+  background: rgba(11, 15, 25, 0.75);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* 1. LOGO Y SUBTÍTULO */
+.header-brand {
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+}
+
+.header-brand h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.2rem, 3vw, 1.6rem); /* Texto fluido: se achica en móvil */
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.header-subtitle {
+  font-size: 0.7rem;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+/* 2. SELECTOR CENTRAL (PÍLDORA DE NAVEGACIÓN) */
+.header-nav {
+  display: flex;
+  flex-wrap: wrap; /* CRÍTICO para que no se desborde en móvil */
+  justify-content: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 5px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+  margin: 0 15px;
+}
+
+.nav-item {
+  background: transparent;
+  border: none;
+  color: #A0AEC0;
+  padding: 8px 16px;
+  border-radius: 50px;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  white-space: nowrap; /* Evita que el texto del botón se parta en dos líneas */
+}
+
+.nav-item:hover {
+  color: #E2E8F0;
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  color: #0B0F19;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+/* 3. PERFIL DE USUARIO (DERECHA) */
+.header-user {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 14px;
+  border-radius: 50px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.user-badge:hover {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.user-avatar {
+  font-size: 1rem;
+  background: rgba(212, 175, 55, 0.1);
+  padding: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-info-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.user-name {
+  color: #E2E8F0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.user-role {
+  color: #A0AEC0;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.role-admin {
+  color: #D4AF37;
+  font-weight: bold;
+}
+
+/* =========================================
+   LA MAGIA DEL GRID - TARJETAS LUXURY
+   ========================================= */
+.dashboard-grid, .rastreo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 30px;
+  margin-top: 30px;
+  align-items: start;
+}
+
+.left-panel, .right-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.left-panel {
+  position: sticky;
+  top: 100px;
+  padding: 30px 24px;
+  border-color: rgba(212, 175, 55, 0.2); /* Toque dorado */
+}
+
+/* El right panel en rastreo es invisible para que sus hijos resalten */
+.right-panel {
+  padding: 0; 
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.section-title {
+  font-family: 'Cinzel', serif;
+  color: #D4AF37;
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-top: 0;
+  margin-bottom: 25px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 12px;
+  text-transform: uppercase;
+}
+
+/* =========================================
+   ESTILOS ESPECÍFICOS DE RASTREO
+   ========================================= */
+.rastreo-container {
+  max-width: 1400px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.rastreo-main-title {
+  color: #D4AF37;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-family: 'Cinzel', serif;
+}
+
+.rastreo-state-box {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(22, 32, 50, 0.6);
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.results-box {
+  background: rgba(22, 32, 50, 0.6);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.results-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.results-header h3 {
+  color: #fff;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.results-header h3 span {
+  color: #D4AF37;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 1px;
+}
+
+.btn-limpiar {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #A0AEC0;
+  padding: 6px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: 0.3s;
+}
+
+.btn-limpiar:hover { 
+  background: rgba(212, 175, 55, 0.2); 
+  color: #D4AF37; 
+  border-color: #D4AF37; 
+}
+
+/* =========================================
+   PANTALLA DE CARGA Y SPINNERS
+   ========================================= */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at center, #162032 0%, #0B0F19 100%);
+  padding: 20px;
+  text-align: center;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(212, 175, 55, 0.1);
+  border-top-color: #D4AF37;
+  border-radius: 50%;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+.spinner-mini {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-top-color: #D4AF37;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+.loading-container p {
+  color: #D4AF37;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 2px;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+/* =========================================
+   MENSAJES DE ERROR GLOBALES
+   ========================================= */
+.error-mensaje {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #ff6b6b;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 40px auto;
+  max-width: 90%;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================
+   MODOS (ADMIN Y CLIENTE)
+   ========================================= */
+.admin-main, .client-main {
+  width: 100%;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #0B0F19;
+  min-height: calc(100vh - 80px);
+}
+
+.admin-main .admin-panel {
+  max-width: 100%;
+  padding: 20px;
+}
+
+.client-main .client-dashboard {
+  max-width: 100%;
+  padding: 30px 5%;
+}
+
+/* =========================================
+   MEDIA QUERIES - RESPONSIVE DESIGN (AQUÍ ESTÁ LA MAGIA)
+   ========================================= */
+
+/* Tablets y pantallas medianas */
+@media (max-width: 992px) {
+  .dashboard-grid, .rastreo-grid {
+    grid-template-columns: 1fr; /* FUERZA 1 SOLA COLUMNA */
+    gap: 20px;
+  }
+  
+  .left-panel {
+    position: static; /* Quita el sticky para que fluya natural hacia abajo */
+  }
+}
+
+/* Teléfonos (Mobile) */
+@media (max-width: 768px) {
+  .app-header-vip {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .header-brand {
+    align-items: center;
+    text-align: center;
+  }
+
+  .header-nav {
+    width: 100%;
+    margin: 0;
+    border-radius: 12px;
+  }
+
+  .nav-item {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 10px;
+    font-size: 0.75rem;
+  }
+
+  .header-user {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .client-main .client-dashboard, 
+  .admin-main .admin-panel {
+    padding: 15px;
+  }
+  
+  .right-panel {
+    padding: 0;
+    border-left: none;
+  }
+  
+  /* Ajustes para Rastreo en Móvil */
+  .rastreo-container {
+    padding: 0 15px;
+    margin: 20px auto;
+  }
+  
+  .left-panel {
+    padding: 20px 5px;
+  }
+  
+  .results-box {
+    padding: 15px;
+  }
+}
+
+/* Teléfonos pequeños (iPhone SE, etc.) */
+@media (max-width: 480px) {
+  .nav-item {
+    padding: 8px;
+    font-size: 0.7rem;
+  }
+  
+  .user-badge {
+    width: 100%;
+    justify-content: center;
+  }
+}

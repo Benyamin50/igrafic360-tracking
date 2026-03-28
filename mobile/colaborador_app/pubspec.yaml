@@ -1,0 +1,31 @@
+name: colaborador_app
+description: App para colaboradores - Actualización de envíos con QR
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 📦 Para conexión HTTP con tu backend
+  http: ^1.1.0
+  
+  # 📷 Para escanear códigos QR
+  qr_code_scanner_plus: ^2.0.10
+  
+  # 📸 Para tomar fotos (¡NUEVO!)
+  image_picker: ^1.0.4
+  
+  # 🎨 Iconos (ya lo tienes)
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,20 @@
+# Node & React
+node_modules/
+build/
+.env
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.pub-cache/
+.pub/
+build/
+ios/.generated/
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Sistema
+.DS_Store

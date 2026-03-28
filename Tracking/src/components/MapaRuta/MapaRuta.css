@@ -1,0 +1,64 @@
+/* src/components/MapaRuta/MapaRuta.css */
+.mapa-container {
+  margin: 20px 0;
+  padding: 15px;
+  background: #162032;
+  border-radius: 15px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.mapa-titulo {
+  color: #D4AF37;
+  font-size: 16px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapa-titulo span {
+  font-size: 20px;
+}
+
+/* Estilos para la leyenda */
+.mapa-leyenda {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #A0AEC0;
+}
+
+.punto-actual {
+  width: 12px;
+  height: 12px;
+  background: #D4AF37;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 5px #D4AF37;
+}
+
+.linea-ruta {
+  width: 20px;
+  height: 3px;
+  background: #D4AF37;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+/* Ajustes responsive */
+@media (max-width: 768px) {
+  .mapa-leyenda {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

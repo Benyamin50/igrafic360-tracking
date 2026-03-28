@@ -1,0 +1,1053 @@
+# -*- coding: utf-8 -*-
+from flask import Blueprint, jsonify, request
+from db_config import get_db_connection
+from datetime import datetime
+import json
+
+tracking_bp = Blueprint('tracking', __name__)
+
+# ============================================
+# FUNCION AUXILIAR: Obtener UID desde cookie
+# ============================================
+def obtener_uid_cookie():
+    """Obtiene el UID desde la cookie"""
+    return request.cookies.get('uid')
+
+# ============================================
+# FUNCION DE VALIDACIÓN DE PROPIEDAD (MySQL)
+# ============================================
+def verificar_propiedad_paquete(tracking_id, uid_usuario):
+    """
+    Verifica que el usuario sea dueño del paquete o admin.
+    Retorna (permitido, mensaje_error)
+    """
+    try:
+        if not uid_usuario:
+            return False, "Usuario no autenticado"
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener paquete
+        cursor.execute("SELECT * FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        paquete = cursor.fetchone()
+        
+        if not paquete:
+            cursor.close()
+            conn.close()
+            return False, "Paquete no existe"
+        
+        # Obtener rol del usuario
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+        cliente = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not cliente:
+            return False, "Usuario no encontrado"
+        
+        rol = cliente.get('rol', 'cliente')
+        
+        # Admin tiene acceso total
+        if rol == 'admin':
+            return True, None
+        
+        # Cliente solo puede ver sus paquetes
+        if paquete.get('cliente_uid') == uid_usuario:
+            return True, None
+        
+        return False, "No tienes permiso para acceder a este paquete"
+        
+    except Exception as e:
+        return False, str(e)
+
+# ============================================
+# FUNCION AUXILIAR: Convertir paquete a eventos
+# ============================================
+def paquete_a_eventos(paquete):
+    """Convierte un paquete en lista de eventos para timeline"""
+    eventos = []
+    
+    orden = [
+        ('Origen_paquete_recibido', 'Fecha_Origen'),
+        ('Ubicacion_1', 'Fecha_1'),
+        ('Ubicacion_2', 'Fecha_2'),
+        ('Ubicacion_3', 'Fecha_3'),
+        ('Llegada_Sucursal', 'Fecha_4'),
+        ('Entregado', 'Fecha_5')
+    ]
+    
+    for campo_evento, campo_fecha in orden:
+        evento = paquete.get(campo_evento)
+        fecha = paquete.get(campo_fecha)
+        if evento and evento != '':
+            eventos.append({
+                'evento': evento,
+                'fecha': fecha.strftime('%Y-%m-%d %H:%M:%S') if fecha else ''
+            })
+    
+    return eventos
+
+# ============================================
+# FUNCIONES AUXILIARES
+# ============================================
+def get_paquetes_cliente_data(uid, limit=20, last_id=None):
+    """Obtiene paquetes de un cliente con paginación"""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Obtener paquetes del cliente
+    cursor.execute("SELECT paquetes FROM clientes WHERE uid = %s", (uid,))
+    cliente = cursor.fetchone()
+    
+    if not cliente:
+        cursor.close()
+        conn.close()
+        return None, {'error': 'Cliente no encontrado'}
+    
+    paquetes_ids = json.loads(cliente['paquetes']) if cliente['paquetes'] else []
+    paquetes_ids_reversed = list(reversed(paquetes_ids))
+    
+    start_index = 0
+    if last_id and last_id in paquetes_ids_reversed:
+        start_index = paquetes_ids_reversed.index(last_id) + 1
+    
+    paginated_ids = paquetes_ids_reversed[start_index:start_index + limit]
+    
+    if not paginated_ids:
+        cursor.close()
+        conn.close()
+        return [], {
+            'has_more': False,
+            'next_last_id': None,
+            'total': len(paquetes_ids),
+            'loaded': start_index
+        }
+    
+    # Obtener datos de los paquetes
+    placeholders = ','.join(['%s'] * len(paginated_ids))
+    cursor.execute(f"""
+        SELECT * FROM paquetes WHERE id IN ({placeholders}) OR tracking_id IN ({placeholders})
+    """, paginated_ids + paginated_ids)
+    
+    paquetes = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    # Ordenar según el orden original
+    paquetes_dict = {p['id']: p for p in paquetes}
+    paquetes_list = [paquetes_dict[pid] for pid in paginated_ids if pid in paquetes_dict]
+    
+    has_more = start_index + limit < len(paquetes_ids_reversed)
+    next_last_id = paginated_ids[-1] if paginated_ids else None
+    
+    return paquetes_list, {
+        'has_more': has_more,
+        'next_last_id': next_last_id,
+        'total': len(paquetes_ids),
+        'loaded': start_index + len(paquetes_list)
+    }
+
+# ============================================
+# TRACKING INDIVIDUAL
+# ============================================
+@tracking_bp.route('/tracking/<tracking_id>')
+def get_tracking(tracking_id):
+    uid_usuario = obtener_uid_cookie()
+    
+    if not uid_usuario:
+        return jsonify({"error": "Usuario no autenticado"}), 401
+    
+    permitido, error = verificar_propiedad_paquete(tracking_id, uid_usuario)
+    if not permitido:
+        return jsonify({"error": error}), 403
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+    paquete = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if not paquete:
+        return jsonify({"error": "No encontrado"}), 404
+    
+    eventos = paquete_a_eventos(paquete)
+    return jsonify(eventos)
+
+# ============================================
+# LISTA DE PAQUETES (ADMIN)
+# ============================================
+@tracking_bp.route('/paquetes', methods=['GET'])
+def listar_paquetes():
+    uid_usuario = obtener_uid_cookie()
+    if not uid_usuario:
+        return jsonify({"error": "Usuario no autenticado"}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+    cliente = cursor.fetchone()
+    
+    if not cliente or cliente.get('rol') != 'admin':
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "No autorizado. Se requiere rol de administrador"}), 403
+    
+    limit = request.args.get('limit', 50, type=int)
+    last_id = request.args.get('last_id', None)
+    
+    try:
+        if last_id:
+            cursor.execute("""
+                SELECT * FROM paquetes 
+                WHERE id < %s OR (id = %s AND tracking_id < %s)
+                ORDER BY creado_en DESC 
+                LIMIT %s
+            """, (last_id, last_id, last_id, limit))
+        else:
+            cursor.execute("SELECT * FROM paquetes ORDER BY creado_en DESC LIMIT %s", (limit,))
+        
+        paquetes = cursor.fetchall()
+        
+        has_more = len(paquetes) == limit
+        last_doc_id = paquetes[-1]['id'] if paquetes else None
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'paquetes': paquetes,
+            'pagination': {
+                'has_more': has_more,
+                'next_last_id': last_doc_id,
+                'loaded': len(paquetes)
+            }
+        })
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# PAQUETES DE CLIENTE
+# ============================================
+@tracking_bp.route('/api/cliente/<uid>/paquetes', methods=['GET'])
+def api_paquetes_cliente(uid):
+    uid_usuario = obtener_uid_cookie()
+    
+    if not uid_usuario:
+        return jsonify({'error': 'Usuario no autenticado'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+    cliente = cursor.fetchone()
+    
+    if not cliente:
+        cursor.close()
+        conn.close()
+        return jsonify({'error': 'Usuario no encontrado'}), 404
+    
+    rol = cliente.get('rol', 'cliente')
+    
+    if rol != 'admin' and uid_usuario != uid:
+        cursor.close()
+        conn.close()
+        return jsonify({'error': 'No autorizado. Solo puedes ver tus propios paquetes'}), 403
+    
+    limit = request.args.get('limit', 20, type=int)
+    last_id = request.args.get('last_id', None)
+    
+    paquetes_list, pagination = get_paquetes_cliente_data(uid, limit, last_id)
+    
+    if paquetes_list is None:
+        cursor.close()
+        conn.close()
+        return jsonify({'error': pagination.get('error', 'Error')}), 404
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        'paquetes': paquetes_list,
+        'pagination': pagination
+    })
+
+# ============================================
+# BATCH PROCESSING
+# ============================================
+@tracking_bp.route('/api/batch', methods=['POST'])
+def batch_operations():
+    try:
+        uid_usuario = obtener_uid_cookie()
+        if not uid_usuario:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+        cliente = cursor.fetchone()
+        
+        if not cliente:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+        
+        rol = cliente.get('rol', 'cliente')
+        
+        data = request.json
+        operations = data.get('operations', [])
+        results = []
+        
+        for op in operations:
+            op_type = op.get('type')
+            
+            if op_type == 'tracking':
+                tracking_id = op.get('id')
+                try:
+                    permitido, error = verificar_propiedad_paquete(tracking_id, uid_usuario)
+                    if not permitido:
+                        results.append({
+                            'type': 'tracking',
+                            'id': tracking_id,
+                            'success': False,
+                            'error': error
+                        })
+                        continue
+                    
+                    cursor.execute("SELECT * FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+                    paquete = cursor.fetchone()
+                    
+                    if not paquete:
+                        results.append({
+                            'type': 'tracking',
+                            'id': tracking_id,
+                            'success': False,
+                            'error': 'Paquete no encontrado'
+                        })
+                        continue
+                    
+                    eventos = paquete_a_eventos(paquete)
+                    
+                    results.append({
+                        'type': 'tracking',
+                        'id': tracking_id,
+                        'success': True,
+                        'data': eventos,
+                        'cached': False
+                    })
+                except Exception as e:
+                    results.append({
+                        'type': 'tracking',
+                        'id': tracking_id,
+                        'success': False,
+                        'error': str(e)
+                    })
+            
+            elif op_type == 'paquetes_cliente':
+                uid = op.get('uid')
+                limit = op.get('limit', 20)
+                last_id = op.get('last_id')
+                
+                if rol != 'admin' and uid_usuario != uid:
+                    results.append({
+                        'type': 'paquetes_cliente',
+                        'uid': uid,
+                        'success': False,
+                        'error': 'No autorizado para ver paquetes de otro cliente'
+                    })
+                    continue
+                
+                try:
+                    paquetes_list, pagination = get_paquetes_cliente_data(uid, limit, last_id)
+                    
+                    if paquetes_list is None:
+                        results.append({
+                            'type': 'paquetes_cliente',
+                            'uid': uid,
+                            'success': False,
+                            'error': pagination.get('error', 'Error')
+                        })
+                        continue
+                    
+                    results.append({
+                        'type': 'paquetes_cliente',
+                        'uid': uid,
+                        'success': True,
+                        'data': {
+                            'paquetes': paquetes_list,
+                            'pagination': pagination
+                        }
+                    })
+                except Exception as e:
+                    results.append({
+                        'type': 'paquetes_cliente',
+                        'uid': uid,
+                        'success': False,
+                        'error': str(e)
+                    })
+            
+            elif op_type == 'paquetes_admin':
+                if rol != 'admin':
+                    results.append({
+                        'type': 'paquetes_admin',
+                        'success': False,
+                        'error': 'No autorizado. Se requiere rol de administrador'
+                    })
+                    continue
+                
+                limit = op.get('limit', 50)
+                last_id = op.get('last_id')
+                
+                try:
+                    if last_id:
+                        cursor.execute("""
+                            SELECT * FROM paquetes 
+                            WHERE id < %s
+                            ORDER BY creado_en DESC 
+                            LIMIT %s
+                        """, (last_id, limit))
+                    else:
+                        cursor.execute("SELECT * FROM paquetes ORDER BY creado_en DESC LIMIT %s", (limit,))
+                    
+                    paquetes = cursor.fetchall()
+                    has_more = len(paquetes) == limit
+                    last_doc_id = paquetes[-1]['id'] if paquetes else None
+                    
+                    results.append({
+                        'type': 'paquetes_admin',
+                        'success': True,
+                        'data': {
+                            'paquetes': paquetes,
+                            'pagination': {
+                                'has_more': has_more,
+                                'next_last_id': last_doc_id,
+                                'loaded': len(paquetes)
+                            }
+                        }
+                    })
+                except Exception as e:
+                    results.append({
+                        'type': 'paquetes_admin',
+                        'success': False,
+                        'error': str(e)
+                    })
+        
+        cursor.close()
+        conn.close()
+        return jsonify({'results': results}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
+# FOTOS
+# ============================================
+@tracking_bp.route('/api/paquete/agregar-foto', methods=['POST'])
+def agregar_foto():
+    try:
+        datos = request.json
+        tid = datos.get('tracking_id')
+        foto_url = datos.get('foto_url')
+        tipo = datos.get('tipo')
+        fecha = datos.get('fecha')
+        
+        uid_usuario = obtener_uid_cookie()
+        
+        if not uid_usuario:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        if not tid or not foto_url:
+            return jsonify({'error': 'Faltan datos'}), 400
+        
+        permitido, error = verificar_propiedad_paquete(tid, uid_usuario)
+        if not permitido:
+            return jsonify({'error': error}), 403
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT fotos FROM paquetes WHERE id = %s OR tracking_id = %s", (tid, tid))
+        paquete = cursor.fetchone()
+        
+        if not paquete:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Paquete no encontrado'}), 404
+        
+        fotos = json.loads(paquete['fotos']) if paquete['fotos'] else []
+        
+        nueva_foto = {
+            'url': foto_url,
+            'tipo': tipo,
+            'fecha': fecha,
+            'subida_por': 'app_colaborador'
+        }
+        
+        fotos.append(nueva_foto)
+        fotos_json = json.dumps(fotos)
+        
+        cursor.execute("UPDATE paquetes SET fotos = %s WHERE id = %s OR tracking_id = %s", (fotos_json, tid, tid))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({'mensaje': 'Foto guardada correctamente'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@tracking_bp.route('/api/paquete/<tracking_id>/fotos', methods=['GET'])
+def obtener_fotos(tracking_id):
+    try:
+        uid_usuario = obtener_uid_cookie()
+        
+        if not uid_usuario:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        permitido, error = verificar_propiedad_paquete(tracking_id, uid_usuario)
+        if not permitido:
+            return jsonify({'error': error}), 403
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT fotos FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        paquete = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not paquete:
+            return jsonify({'fotos': []})
+        
+        fotos = json.loads(paquete['fotos']) if paquete['fotos'] else []
+        
+        fotos_con_tipo = []
+        for foto in fotos:
+            if isinstance(foto, dict):
+                fotos_con_tipo.append({
+                    'url': str(foto.get('url', '')),
+                    'tipo': str(foto.get('tipo', 'desconocido'))
+                })
+            elif isinstance(foto, str):
+                fotos_con_tipo.append({
+                    'url': foto,
+                    'tipo': 'desconocido'
+                })
+        
+        return jsonify({'fotos': fotos_con_tipo})
+    except Exception as e:
+        return jsonify({'fotos': []}), 200
+
+# ============================================
+# COORDENADAS
+# ============================================
+@tracking_bp.route('/api/paquete/<tracking_id>/coordenadas', methods=['GET'])
+def obtener_coordenadas(tracking_id):
+    try:
+        uid_usuario = obtener_uid_cookie()
+        
+        if not uid_usuario:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        permitido, error = verificar_propiedad_paquete(tracking_id, uid_usuario)
+        if not permitido:
+            return jsonify({'error': error}), 403
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT * FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        paquete = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not paquete:
+            return jsonify({'error': 'No encontrado'}), 404
+        
+        orden = ['Origen_paquete_recibido', 'Ubicacion_1', 'Ubicacion_2', 'Ubicacion_3', 'Llegada_Sucursal', 'Entregado']
+        coords_list = []
+        
+        for campo in orden:
+            coords_json = paquete.get(f'coords_{campo}')
+            if coords_json:
+                try:
+                    c = json.loads(coords_json) if isinstance(coords_json, str) else coords_json
+                    if c and isinstance(c, dict):
+                        coords_list.append({
+                            'lat': c.get('lat'),
+                            'lng': c.get('lng'),
+                            'tipo': campo,
+                            'fecha': c.get('timestamp', ''),
+                            'evento': paquete.get(campo, '')
+                        })
+                except:
+                    pass
+        
+        return jsonify({
+            'tracking_id': tracking_id,
+            'coordenadas': coords_list
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
+# ACTUALIZAR CON COORDENADAS (ADMIN)
+# ============================================
+@tracking_bp.route('/actualizar-con-coordenadas/<tracking_id>', methods=['POST'])
+def actualizar_con_coordenadas(tracking_id):
+    try:
+        print("=== actualizar_con_coordenadas ===")
+        print(f"tracking_id: {tracking_id}")
+        print(f"Headers: {dict(request.headers)}")
+        print(f"Datos recibidos: {request.json}")
+        
+        uid_usuario = obtener_uid_cookie()
+        if not uid_usuario:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+        admin = cursor.fetchone()
+        
+        if not admin or admin.get('rol') != 'admin':
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "No autorizado. Se requiere rol de administrador"}), 403
+        
+        datos = request.json
+        columna = datos.get('columna')
+        valor = datos.get('valor')
+        fecha = datos.get('fecha')
+        lat = datos.get('lat')
+        lng = datos.get('lng')
+        
+        if not columna or not valor:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Faltan datos"}), 400
+        
+        # Verificar que el paquete existe
+        cursor.execute("SELECT id FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "ID no encontrado"}), 404
+        
+        actualizacion = {columna: valor}
+        
+        mapa_fechas = {
+            'Origen_paquete_recibido': 'Fecha_Origen',
+            'Ubicacion_1': 'Fecha_1',
+            'Ubicacion_2': 'Fecha_2',
+            'Ubicacion_3': 'Fecha_3',
+            'Llegada_Sucursal': 'Fecha_4',
+            'Entregado': 'Fecha_5'
+        }
+        
+        if fecha:
+            campo_fecha = mapa_fechas.get(columna)
+            if campo_fecha:
+                try:
+                    from dateutil import parser
+                    fecha_parseada = parser.parse(fecha, fuzzy=True)
+                    actualizacion[campo_fecha] = fecha_parseada.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    actualizacion[campo_fecha] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        if lat and lng:
+            timestamp_fecha = fecha if fecha else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            coords = json.dumps({
+                'lat': float(lat),
+                'lng': float(lng),
+                'timestamp': timestamp_fecha
+            })
+            actualizacion[f'coords_{columna}'] = coords
+        
+        print(f"Actualizacion a ejecutar: {actualizacion}")
+        
+        if f'coords_{columna}' in actualizacion:
+            cursor.execute(f"SHOW COLUMNS FROM paquetes LIKE 'coords_{columna}'")
+            col_exists = cursor.fetchone()
+            if not col_exists:
+                print(f"ADVERTENCIA: La columna coords_{columna} no existe en la tabla")
+                del actualizacion[f'coords_{columna}']
+        
+        set_clause = ', '.join([f"{k} = %s" for k in actualizacion.keys()])
+        values = list(actualizacion.values()) + [tracking_id, tracking_id]
+        
+        print(f"SQL: UPDATE paquetes SET {set_clause} WHERE id = %s OR tracking_id = %s")
+        print(f"Values: {values}")
+        
+        cursor.execute(f"UPDATE paquetes SET {set_clause} WHERE id = %s OR tracking_id = %s", values)
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"mensaje": "Estado y coordenadas actualizados correctamente"}), 200
+    except Exception as e:
+        print(f"Error en actualizar_con_coordenadas: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# ACTUALIZAR DATOS DEL PAQUETE (ADMIN)
+# ============================================
+@tracking_bp.route('/actualizar-datos', methods=['POST'])
+def actualizar_datos_paquete():
+    try:
+        uid_usuario = obtener_uid_cookie()
+        if not uid_usuario:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+        admin = cursor.fetchone()
+        
+        if not admin or admin.get('rol') != 'admin':
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "No autorizado. Se requiere rol de administrador"}), 403
+        
+        datos = request.json
+        tracking_id = datos.get('id')
+        
+        if not tracking_id:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "ID de paquete requerido"}), 400
+        
+        cursor.execute("SELECT id FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "ID no encontrado"}), 404
+        
+        actualizacion = {}
+        
+        if datos.get('peso'):
+            actualizacion['peso'] = datos['peso']
+        if datos.get('precio'):
+            actualizacion['precio'] = datos['precio']
+        if datos.get('origen'):
+            actualizacion['Origen_paquete_recibido'] = f"Recibido en {datos['origen']}"
+            actualizacion['Fecha_Origen'] = datetime.now()
+        if datos.get('observaciones'):
+            actualizacion['observaciones'] = datos['observaciones']
+        if datos.get('estado_pago'):
+            actualizacion['estado_pago'] = datos['estado_pago']
+            
+        if 'es_fantasma' in datos:
+            actualizacion['es_fantasma'] = 1 if datos['es_fantasma'] else 0
+            if datos['es_fantasma']:
+                actualizacion['cliente_uid'] = None
+                actualizacion['cliente_nombre'] = None
+                actualizacion['cliente_email'] = None
+                actualizacion['cliente_codigo'] = None
+        
+        if not actualizacion:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "No hay datos para actualizar"}), 400
+        
+        set_clause = ', '.join([f"{k} = %s" for k in actualizacion.keys()])
+        values = list(actualizacion.values()) + [tracking_id, tracking_id]
+        
+        cursor.execute(f"UPDATE paquetes SET {set_clause} WHERE id = %s OR tracking_id = %s", values)
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"mensaje": "Paquete actualizado correctamente"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# REGISTRAR PAQUETE (ADMIN)
+# ============================================
+@tracking_bp.route('/registrar', methods=['POST'])
+def registrar_paquete():
+    try:
+        uid_usuario = obtener_uid_cookie()
+        if not uid_usuario:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_usuario,))
+        admin = cursor.fetchone()
+        
+        if not admin or admin.get('rol') != 'admin':
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "No autorizado. Se requiere rol de administrador"}), 403
+        
+        datos = request.json
+        tracking_id = datos.get('id')
+        
+        if not tracking_id:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "ID de paquete requerido"}), 400
+        
+        cursor.execute("SELECT id FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "El ID ya existe"}), 400
+        
+        nuevo_paquete = {
+            'id': tracking_id,
+            'tracking_id': tracking_id,
+            'precio': datos.get('precio', 'Pendiente'),
+            'peso': datos.get('peso', 'Pendiente'),
+            'observaciones': datos.get('observaciones', ''),
+            'creado_en': datetime.now(),
+            'pagado': 0,
+            'pago_reportado': 0,
+            'fecha_pago': None,
+            'fotos': '[]'
+        }
+        
+        if datos.get('peso') != 'Pendiente' and datos.get('precio') != 'Pendiente':
+            nuevo_paquete['Origen_paquete_recibido'] = f"Recibido en {datos.get('origen', 'Miami')}"
+            nuevo_paquete['Fecha_Origen'] = datetime.now()
+        
+        columns = ', '.join(nuevo_paquete.keys())
+        placeholders = ', '.join(['%s'] * len(nuevo_paquete))
+        
+        cursor.execute(f"INSERT INTO paquetes ({columns}) VALUES ({placeholders})", list(nuevo_paquete.values()))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "mensaje": "Paquete registrado correctamente",
+            "id": tracking_id
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# ASIGNAR PAQUETE A CLIENTE (ADMIN)
+# ============================================
+@tracking_bp.route('/api/paquete/asignar', methods=['POST'])
+def api_asignar_paquete():
+    try:
+        uid_admin = obtener_uid_cookie()
+        if not uid_admin:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_admin,))
+        admin = cursor.fetchone()
+        
+        if not admin or admin.get('rol') != 'admin':
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'No autorizado. Se requiere rol de administrador'}), 403
+        
+        datos = request.json
+        uid = datos.get('uid')
+        tracking_id = datos.get('tracking_id')
+        
+        if not uid or not tracking_id:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'uid y tracking_id son requeridos'}), 400
+        
+        cursor.execute("SELECT * FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        paquete = cursor.fetchone()
+        
+        if not paquete:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Paquete no encontrado'}), 404
+        
+        if paquete.get('cliente_uid'):
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'ERROR: Este paquete ya pertenece a otra persona'}), 400
+        
+        cursor.execute("SELECT * FROM clientes WHERE uid = %s", (uid,))
+        cliente = cursor.fetchone()
+        
+        if not cliente:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Cliente no encontrado'}), 404
+        
+        nombre_cliente = cliente.get('nombre', 'Cliente')
+        
+        paquetes_cliente = json.loads(cliente.get('paquetes', '[]'))
+        if tracking_id not in paquetes_cliente:
+            paquetes_cliente.append(tracking_id)
+        
+        cursor.execute("UPDATE clientes SET paquetes = %s WHERE uid = %s", (json.dumps(paquetes_cliente), uid))
+        
+        cursor.execute("""
+            UPDATE paquetes SET 
+                cliente_uid = %s,
+                cliente_nombre = %s,
+                cliente_email = %s,
+                cliente_codigo = %s,
+                fecha_asignacion = %s,
+                es_fantasma = 0
+            WHERE id = %s OR tracking_id = %s
+        """, (uid, nombre_cliente, cliente.get('email', ''), cliente.get('codigo_cliente', ''), datetime.now(), tracking_id, tracking_id))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"Paquete {tracking_id} asignado a {nombre_cliente} (UID: {uid})")
+        
+        return jsonify({
+            'mensaje': 'Paquete asignado correctamente',
+            'paquete': tracking_id,
+            'cliente': nombre_cliente
+        }), 200
+        
+    except Exception as e:
+        print(f"Error asignando paquete: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
+# REGISTRAR PAQUETE SIN DUEÑO (ADMIN)
+# ============================================
+@tracking_bp.route('/api/paquete/registrar-sin-dueno', methods=['POST'])
+def registrar_sin_dueno():
+    try:
+        uid_admin = obtener_uid_cookie()
+        if not uid_admin:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT rol FROM clientes WHERE uid = %s", (uid_admin,))
+        admin = cursor.fetchone()
+        
+        if not admin or admin.get('rol') != 'admin':
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "No autorizado. Se requiere rol de administrador"}), 403
+        
+        datos = request.json
+        tracking_id = datos.get('tracking_original') 
+        
+        if not tracking_id:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "El tracking original es obligatorio"}), 400
+        
+        cursor.execute("SELECT id FROM paquetes WHERE id = %s OR tracking_id = %s", (tracking_id, tracking_id))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "El ID ya existe"}), 400
+        
+        nuevo_paquete = {
+            'id': tracking_id,
+            'tracking_id': tracking_id,
+            'peso': datos.get('peso', 'Pendiente'),
+            'precio': 'Pendiente',
+            'observaciones': datos.get('observaciones', 'Paquete sin identificar'),
+            'creado_en': datetime.now(),
+            'cliente_uid': None,
+            'es_fantasma': 1,
+            'fotos': json.dumps(datos.get('fotos', []))
+        }
+        
+        columns = ', '.join(nuevo_paquete.keys())
+        placeholders = ', '.join(['%s'] * len(nuevo_paquete))
+        
+        cursor.execute(f"INSERT INTO paquetes ({columns}) VALUES ({placeholders})", list(nuevo_paquete.values()))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"mensaje": "Paquete fantasma registrado", "id": tracking_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# OBTENER PAQUETE COMPLETO CON DATOS DE PAGO
+# ============================================
+@tracking_bp.route('/paquete-completo/<tracking_id>', methods=['GET'])
+def obtener_paquete_completo(tracking_id):
+    try:
+        uid_usuario = obtener_uid_cookie()
+        
+        if not uid_usuario:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        permitido, error = verificar_propiedad_paquete(tracking_id, uid_usuario)
+        if not permitido:
+            return jsonify({"error": error}), 403
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT pagado, estado_pago, metodo_pago, referencia_binance, 
+                   pago_reportado, precio, cliente_nombre
+            FROM paquetes 
+            WHERE id = %s OR tracking_id = %s
+        """, (tracking_id, tracking_id))
+        
+        paquete = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not paquete:
+            return jsonify({"error": "Paquete no encontrado"}), 404
+        
+        valor_pagado = paquete.get('pagado')
+        es_pagado = valor_pagado == 1 or valor_pagado == True
+        
+        valor_reportado = paquete.get('pago_reportado')
+        es_reportado = valor_reportado == 1 or valor_reportado == True
+        
+        print(f"DEBUG -> ID: {tracking_id} | pagado: {valor_pagado} | reportado: {valor_reportado}")
+        
+        response = jsonify({
+            'pagado': es_pagado,
+            'estado_pago': paquete.get('estado_pago') or 'pendiente',
+            'metodo_pago': paquete.get('metodo_pago'),
+            'referencia_binance': paquete.get('referencia_binance'),
+            'pago_reportado': es_reportado,
+            'precio': paquete.get('precio'),
+            'cliente_nombre': paquete.get('cliente_nombre')
+        })
+        
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        
+        return response, 200
+        
+    except Exception as e:
+        print(f"Error en obtener_paquete_completo: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500

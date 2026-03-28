@@ -1,0 +1,216 @@
+/* ============================================
+   TRACKING TIMELINE - ESTILO PREMIUM & RESPONSIVE
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+
+/* CONTENEDOR PRINCIPAL */
+.timeline-container {
+  padding: 15px 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.timeline-item {
+  display: flex;
+  gap: clamp(15px, 3vw, 25px); /* Se adapta al ancho de la pantalla */
+  min-height: 85px; 
+  position: relative;
+}
+
+/* ============================================
+   EL INDICADOR (PUNTO Y LÍNEA)
+   ============================================ */
+.timeline-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 24px;
+  margin-top: 4px; /* Alinea el punto con el centro de la primera línea de texto */
+}
+
+/* LA LÍNEA CONECTORA */
+.line {
+  width: 2px;
+  flex-grow: 1; 
+  /* Degradado elegante de dorado a casi transparente */
+  background: linear-gradient(to bottom, rgba(212, 175, 55, 0.6) 0%, rgba(212, 175, 55, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%);
+  margin-top: 8px;
+  margin-bottom: 4px;
+  border-radius: 2px;
+}
+
+/* LOS PUNTOS (DOTS) - BASE */
+.dot {
+  width: 16px; /* Ligeramente más grande para destacar */
+  height: 16px;
+  border-radius: 50%;
+  z-index: 2;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background-color: #162032;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* ESTADOS DEL PUNTO (LA MAGIA VISUAL) */
+.dot.completed {
+  /* Pasos ya completados: Plata brillante */
+  background-color: #A0AEC0;
+  border-color: #E2E8F0;
+  box-shadow: 0 0 10px rgba(160, 174, 192, 0.3);
+}
+
+.dot.current {
+  /* Paso actual: Dorado brillante con pulso */
+  background-color: #D4AF37;
+  border-color: #FCF6BA; /* Borde más claro para efecto neón */
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+  animation: goldPulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1.15); /* Ligeramente más grande */
+}
+
+.dot.pending {
+  /* Paso pendiente: Aro dorado discontinuo */
+  background-color: rgba(11, 15, 25, 0.8);
+  border-color: #D4AF37;
+  border-style: dashed;
+  animation: goldPulse 3s infinite;
+}
+
+/* ============================================
+   CONTENIDO DEL EVENTO
+   ============================================ */
+.timeline-content {
+  flex: 1;
+  padding-bottom: 30px; /* Espacio antes del siguiente evento */
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 15px;
+}
+
+.timeline-info {
+  flex: 1;
+}
+
+.event-title {
+  margin: 0 0 8px 0;
+  font-size: clamp(0.95rem, 3vw, 1.05rem);
+  color: #E2E8F0; 
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+
+/* ESTADOS DEL TEXTO */
+.event-title.active {
+  /* El paso actual resalta con tipografía Cinzel y color Dorado */
+  color: #D4AF37;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(1.1rem, 4vw, 1.25rem);
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.event-title.pending {
+  color: #718096;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.event-date {
+  margin: 0;
+  font-size: clamp(0.75rem, 2vw, 0.85rem);
+  color: #A0AEC0; 
+  font-weight: 400;
+  font-family: monospace; /* Le da un toque técnico de sistema de envíos */
+  background: rgba(0, 0, 0, 0.2);
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   BOTÓN DE FOTO PREMIUM
+   ============================================ */
+.foto-btn-timeline {
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  color: #0B0F19;
+  border: none;
+  border-radius: 20px; /* Forma de píldora (Premium) */
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
+  margin-top: 2px;
+  -webkit-tap-highlight-color: transparent; /* Evita parpadeo azul en móviles */
+}
+
+.foto-btn-timeline::before {
+  content: '📷';
+  font-size: 1rem;
+}
+
+.foto-btn-timeline:hover {
+  background: linear-gradient(135deg, #FCF6BA 0%, #D4AF37 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 15px rgba(212, 175, 55, 0.5);
+}
+
+.foto-btn-timeline:active {
+  transform: translateY(1px) scale(0.95);
+  box-shadow: 0 2px 5px rgba(212, 175, 55, 0.3);
+}
+
+/* ESTADO VACÍO (SIN DATOS) */
+.timeline-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: #A0AEC0;
+  font-size: 0.95rem;
+  font-style: italic;
+  background: rgba(22, 32, 50, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px dashed rgba(212, 175, 55, 0.3);
+}
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+@keyframes goldPulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+
+/* ============================================
+   MEDIA QUERIES (MÓVILES)
+   ============================================ */
+@media (max-width: 768px) {
+  .timeline-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .foto-btn-timeline {
+    /* En móvil lo hacemos un poco más ancho para que sea facil de tocar */
+    width: auto;
+    min-height: 40px; 
+    padding: 8px 20px;
+  }
+}

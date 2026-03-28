@@ -1,0 +1,438 @@
+/* ============================================
+   CLIENTE DASHBOARD - DISEÑO PREMIUM & RESPONSIVE
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --gold-primary: #D4AF37;
+  --gold-dark: #AA7C11;
+  --gold-light: #FCF6BA;
+  --bg-dark: #0B0F19;
+  --bg-card: rgba(22, 32, 50, 0.95);
+  --bg-sidebar: #0a0e16;
+  --text-light: #E2E8F0;
+  --text-muted: #A0AEC0;
+  --border-gold: rgba(212, 175, 55, 0.2);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+}
+
+/* ============================================
+   CONTENEDOR PRINCIPAL
+   ============================================ */
+.client-dashboard {
+  min-height: calc(100vh - 60px);
+  background: radial-gradient(circle at top right, #162032 0%, #0B0F19 100%);
+  font-family: 'Montserrat', sans-serif;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   HEADER PREMIUM
+   ============================================ */
+.client-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  padding: 20px 30px;
+  margin-bottom: 25px;
+  border: 1px solid var(--border-gold);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.client-header:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.client-welcome h2 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.2rem, 3vw, 1.4rem);
+  margin: 0;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold-primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.client-logout-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-primary);
+  padding: 10px 25px;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.client-logout-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
+}
+
+/* ============================================
+   LAYOUT PRINCIPAL
+   ============================================ */
+.client-container {
+  display: flex;
+  gap: 25px;
+  align-items: flex-start;
+}
+
+/* ============================================
+   SIDEBAR PREMIUM
+   ============================================ */
+.client-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 90px;
+}
+
+/* Tarjetas de estadísticas */
+.client-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.client-stat-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 18px 12px;
+  text-align: center;
+  border: 1px solid var(--border-gold);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.client-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold-primary), transparent);
+}
+
+.client-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.client-stat-value {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: bold;
+  color: var(--gold-primary);
+  display: block;
+  line-height: 1;
+}
+
+.client-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+  display: block;
+}
+
+/* Lista de paquetes */
+.client-paquetes-list {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-gold);
+}
+
+.client-paquetes-list h3 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold-primary);
+  font-size: 1rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.client-paquetes-scroll {
+  max-height: 50vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden !important;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 5px;
+}
+
+.client-paquetes-scroll::-webkit-scrollbar { width: 4px; }
+.client-paquetes-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+.client-paquetes-scroll::-webkit-scrollbar-thumb { background: var(--gold-primary); border-radius: 10px; }
+
+/* ============================================
+   🔥 MAGIA EN LAS TARJETAS DE PAQUETES 🔥
+   ============================================ */
+.client-paquete-item {
+  position: relative; /* CRÍTICO para flotar el badge */
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.client-paquete-item:hover {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: var(--border-gold);
+}
+
+.client-paquete-item.active {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: var(--gold-primary);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
+}
+
+.client-paquete-id {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gold-primary);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+  padding-right: 80px; /* Evita choque con el badge superior */
+}
+
+.client-paquete-info {
+  display: flex;
+  flex-direction: column; /* Apila hacia abajo */
+  gap: 5px;
+  font-size: 0.8rem;
+}
+
+.client-paquete-estado { color: var(--text-muted); }
+.client-paquete-estado.entregado { color: var(--success); font-weight: 600; }
+.client-paquete-precio { color: var(--text-light); font-weight: 600; font-size: 0.85rem;}
+
+/* El badge flotando como iOS */
+.client-paquete-pago {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+.client-pago-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 30px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+.client-pago-badge.pagado { background: rgba(74, 222, 128, 0.15); color: var(--success); border: 1px solid rgba(74, 222, 128, 0.3); }
+.client-pago-badge.reportado { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); }
+.client-pago-badge.pendiente { background: rgba(248, 113, 113, 0.15); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }
+
+/* ============================================
+   CONTENIDO PRINCIPAL PREMIUM
+   ============================================ */
+.client-main {
+  flex: 1;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border-radius: 24px;
+  padding: 30px;
+  border: 1px solid var(--border-gold);
+  min-width: 0;
+}
+
+.client-welcome-message {
+  text-align: center;
+  padding: 10% 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.client-welcome-icon {
+  font-size: clamp(3rem, 8vw, 4rem);
+  margin-bottom: 20px;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+
+.client-welcome-message h3 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold-primary);
+  font-size: clamp(1.1rem, 3vw, 1.3rem);
+  margin-bottom: 12px;
+}
+
+.client-welcome-message p {
+  color: var(--text-muted);
+  max-width: 450px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.client-tracking-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.client-tracking-left, .client-tracking-right {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-gold);
+}
+
+.client-tracking-right h4, .client-mapa h4 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold-primary);
+  margin-bottom: 20px;
+  font-size: 1rem;
+  border-bottom: 1px solid var(--border-gold);
+  padding-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.client-mapa {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-gold);
+  margin-top: 20px;
+}
+
+/* ============================================
+   MODAL DE FOTO PREMIUM
+   ============================================ */
+.client-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.client-modal-content {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  animation: zoomIn 0.2s ease;
+  display: flex;
+  justify-content: center;
+}
+
+.client-modal-content img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 2px solid var(--gold-primary);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+
+.client-modal-close {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-dark);
+  color: white;
+  border: 2px solid var(--gold-primary);
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+/* ============================================
+   RESPONSIVE DESIGN EXTREMO (MÓVILES)
+   ============================================ */
+@media (max-width: 1024px) {
+  .client-container { flex-direction: column; }
+  .client-sidebar { width: 100%; position: static; }
+  .client-paquetes-scroll { max-height: 400px; }
+}
+
+@media (max-width: 768px) {
+  .client-dashboard { padding: 10px; }
+  
+  .client-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+    padding: 20px 15px;
+    border-radius: 16px;
+  }
+  
+  .client-logout-btn { width: 100%; }
+  
+  .client-tracking-grid { grid-template-columns: 1fr; gap: 20px; }
+  .client-main { padding: 20px 15px; border-radius: 16px; }
+  .client-tracking-left, .client-tracking-right, .client-mapa {
+    padding: 15px;
+    border-radius: 16px;
+  }
+  
+  .client-modal-close {
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+  }
+}
+
+@media (max-width: 480px) {
+  .client-stats { grid-template-columns: 1fr; }
+  .client-paquete-item { padding: 12px; }
+}

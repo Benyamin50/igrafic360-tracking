@@ -1,0 +1,109 @@
+/* src/components/VerificacionTelefono/VerificacionTelefono.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+
+.verificacion-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top right, #162032 0%, #0B0F19 60%);
+  padding: 20px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.verificacion-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 45px 40px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.verificacion-card h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem;
+  margin-top: 0;
+  margin-bottom: 25px;
+  text-align: center;
+  background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.verificacion-info {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.verificacion-info p {
+  color: #A0AEC0;
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.telefono-destino {
+  color: #D4AF37 !important;
+  font-size: 18px !important;
+  font-weight: bold;
+  margin-top: 10px !important;
+  letter-spacing: 1px;
+}
+
+.verificacion-success {
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid #2ecc71;
+  color: #2ecc71;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.codigo-input {
+  text-align: center;
+  letter-spacing: 4px;
+  font-weight: bold;
+  font-size: 20px !important;
+}
+
+.verificacion-footer {
+  text-align: center;
+  padding: 20px 0 10px;
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  margin-top: 20px;
+}
+
+.verificacion-footer p {
+  color: #A0AEC0;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.cancelar-btn {
+  margin-top: 10px;
+  color: #718096 !important;
+}
+
+.cancelar-btn:hover {
+  color: #D4AF37 !important;
+}
+
+/* Reutilizar estilos de error del Login */
+.error-message {
+  background: rgba(220, 53, 69, 0.1);
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 15px 0;
+}
