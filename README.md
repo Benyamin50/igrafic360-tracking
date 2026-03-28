@@ -20,3 +20,5 @@ Solución integral Fullstack para la gestión de tracking internacional, diseña
 - **QR Tracking:** Generación y escaneo de códigos QR para ingreso rápido a bodega.
 - **Evidencia en Galería:** Visualización de fotos reales del paquete con sistema de carga optimizada.
 - **Panel Administrativo:** Control total de paquetes "Sin Identificar" y asignación rápida a clientes.
+
+https://igrafic360.net/tracking/
