@@ -4,20 +4,92 @@ import 'dart:convert';
 class ApiService {
   static const String baseUrl = 'https://igrafic360.net/envio-api';
   
-  // UID DEL ADMINISTRADOR PARA AUTENTICACION
-  static const String adminUid = '5fb1e57024789180a863264ac9bd';
-
+  // UID del usuario actual
+  static String? _currentUid;
+  
+  // ============================================
+  // AUTENTICACION
+  // ============================================
+  
+  // Login con email y contraseña
+  static Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      print('Login: $email');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/login'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      );
+      
+      print('Status code login: ${response.statusCode}');
+      print('Respuesta login: ${response.body}'); // 👈 LOG AGREGADO
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('Datos del cliente: ${data['cliente']}'); // 👈 LOG AGREGADO
+        print('UID del cliente: ${data['cliente']['uid']}'); // 👈 LOG AGREGADO
+        _currentUid = data['cliente']['uid'];
+        print('UID guardado: $_currentUid');
+        return data['cliente'];
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Error en login');
+      }
+    } catch (e) {
+      print('Error en login: $e');
+      throw Exception('Error de conexion: $e');
+    }
+  }
+  
+  // Obtener usuario actual (para mantener sesion)
+  static Future<Map<String, dynamic>?> obtenerUsuarioActual() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/auth/me'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['cliente'];
+      }
+      return null;
+    } catch (e) {
+      print('Error obteniendo usuario: $e');
+      return null;
+    }
+  }
+  
+  // Obtener headers de autenticacion con el UID actual
+  static Map<String, String> _getAuthHeaders() {
+    print('🔐 _currentUid al hacer peticion: $_currentUid'); // 👈 LOG AGREGADO
+    return {
+      'Content-Type': 'application/json',
+      'X-User-UID': _currentUid ?? '',
+    };
+  }
+  
+  // ============================================
+  // METODOS DE TRACKING
+  // ============================================
+  
   // OBTENER ESTADO COMPLETO DEL PAQUETE (TODAS LAS COLUMNAS)
   static Future<Map<String, dynamic>> obtenerEstado(String trackingId) async {
     try {
       print('Consultando tracking: $trackingId');
+      print('Headers: ${_getAuthHeaders()}'); // 👈 LOG AGREGADO
       
       final response = await http.get(
         Uri.parse('$baseUrl/tracking/$trackingId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
       );
       
       print('Status code: ${response.statusCode}');
@@ -26,7 +98,6 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         print('Datos recibidos: $data');
         
-        // Crear mapa con todas las columnas vacias
         Map<String, dynamic> estado = {
           'Origen_paquete-recibido': '',
           'Fecha_Origen': '',
@@ -42,7 +113,6 @@ class ApiService {
           'Fecha_5': '',
         };
         
-        // Mapear cada evento a su columna correspondiente segun el indice
         for (int i = 0; i < data.length; i++) {
           final evento = data[i];
           
@@ -105,56 +175,51 @@ class ApiService {
 
   // OBTENER ESTADO COMPLETO INCLUYENDO DATOS DE PAGO
   static Future<Map<String, dynamic>> obtenerEstadoCompleto(String trackingId) async {
-  try {
-    print('Consultando estado completo: $trackingId');
-    
-    // Obtener los eventos del tracking
-    final eventos = await obtenerEstado(trackingId);
-    
-    // Obtener datos de pago del paquete con timestamp anti-cache
-    final response = await http.get(
-      Uri.parse('$baseUrl/paquete-completo/$trackingId?_t=${DateTime.now().millisecondsSinceEpoch}'),
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-UID': adminUid,
-      },
-    );
-    
-    print('Status code paquete-completo: ${response.statusCode}');
-    print('Respuesta raw: ${response.body}');
-    
-    Map<String, dynamic> datosPago = {
-      'pagado': false,
-      'estado_pago': 'pendiente',
-      'metodo_pago': null,
-      'cliente_nombre': null,
-    };
-    
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      print('Datos de pago recibidos: $data');
-      datosPago = {
-        'pagado': data['pagado'] == true || data['pagado'] == 1,
-        'estado_pago': data['estado_pago'] ?? 'pendiente',
-        'metodo_pago': data['metodo_pago'],
-        'cliente_nombre': data['cliente_nombre'],
+    try {
+      print('Consultando estado completo: $trackingId');
+      
+      final eventos = await obtenerEstado(trackingId);
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/paquete-completo/$trackingId?_t=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: _getAuthHeaders(),
+      );
+      
+      print('Status code paquete-completo: ${response.statusCode}');
+      print('Respuesta raw: ${response.body}');
+      
+      Map<String, dynamic> datosPago = {
+        'pagado': false,
+        'estado_pago': 'pendiente',
+        'metodo_pago': null,
+        'cliente_nombre': null,
       };
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('Datos de pago recibidos: $data');
+        datosPago = {
+          'pagado': data['pagado'] == true || data['pagado'] == 1,
+          'estado_pago': data['estado_pago'] ?? 'pendiente',
+          'metodo_pago': data['metodo_pago'],
+          'cliente_nombre': data['cliente_nombre'],
+        };
+      }
+      
+      return {
+        'eventos': _convertirEstadoALista(eventos),
+        'estado': eventos,
+        'pagado': datosPago['pagado'],
+        'estado_pago': datosPago['estado_pago'],
+        'metodo_pago': datosPago['metodo_pago'],
+        'cliente_nombre': datosPago['cliente_nombre'],
+      };
+      
+    } catch (e) {
+      print('Error en obtenerEstadoCompleto: $e');
+      throw Exception('Error de conexion: $e');
     }
-    
-    return {
-      'eventos': _convertirEstadoALista(eventos),
-      'estado': eventos,
-      'pagado': datosPago['pagado'],
-      'estado_pago': datosPago['estado_pago'],
-      'metodo_pago': datosPago['metodo_pago'],
-      'cliente_nombre': datosPago['cliente_nombre'],
-    };
-    
-  } catch (e) {
-    print('Error en obtenerEstadoCompleto: $e');
-    throw Exception('Error de conexion: $e');
   }
-}
 
   // Convertir estado a lista de eventos
   static List<Map<String, dynamic>> _convertirEstadoALista(Map<String, dynamic> estado) {
@@ -211,10 +276,7 @@ class ApiService {
       
       final response = await http.post(
         Uri.parse('$baseUrl/actualizar/$trackingId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
         body: json.encode({
           'tracking_id': trackingId,
           'columna': columna,
@@ -241,10 +303,7 @@ class ApiService {
       
       final response = await http.post(
         Uri.parse('$baseUrl/api/paquete/agregar-foto'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
         body: json.encode({
           'tracking_id': trackingId,
           'foto_url': fotoUrl,
@@ -276,10 +335,7 @@ class ApiService {
       
       final response = await http.get(
         Uri.parse('$baseUrl/api/paquete/$trackingId/fotos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
       );
       
       print('Status code: ${response.statusCode}');
@@ -334,10 +390,7 @@ class ApiService {
       
       final response = await http.post(
         Uri.parse('$baseUrl/actualizar-con-coordenadas/$trackingId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
         body: json.encode({
           'tracking_id': trackingId,
           'columna': columna,
@@ -365,10 +418,7 @@ class ApiService {
       
       final response = await http.get(
         Uri.parse('$baseUrl/api/paquete/$trackingId/coordenadas'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-UID': adminUid,
-        },
+        headers: _getAuthHeaders(),
       );
       
       print('Status code: ${response.statusCode}');
@@ -390,17 +440,18 @@ class ApiService {
     }
   }
 
-  // OBTENER FECHA ACTUAL FORMATEADA
+  // OBTENER FECHA ACTUAL FORMATEADA (Hora Local del Celular)
   static String _getCurrentDate() {
-    final now = DateTime.now();
+    final now = DateTime.now(); // Usa la hora exacta de tu teléfono
     
+    String year = now.year.toString();
+    String month = now.month.toString().padLeft(2, '0');
+    String day = now.day.toString().padLeft(2, '0');
+    
+    String hour = now.hour.toString().padLeft(2, '0'); // Formato 24h (Ej: 13)
     String minute = now.minute.toString().padLeft(2, '0');
     String second = now.second.toString().padLeft(2, '0');
-    String amPm = now.hour < 12 ? 'AM' : 'PM';
     
-    int hour12 = now.hour % 12;
-    if (hour12 == 0) hour12 = 12;
-    
-    return '${now.day}/${now.month}/${now.year}, ${hour12}:$minute:$second $amPm';
+    return '$year-$month-$day $hour:$minute:$second';
   }
 }

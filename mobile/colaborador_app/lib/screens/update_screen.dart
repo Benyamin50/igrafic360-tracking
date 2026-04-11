@@ -7,7 +7,9 @@ import '../utils/coordenadas.dart';
 import 'dart:io';
 
 class UpdateScreen extends StatefulWidget {
-  const UpdateScreen({super.key});
+  final Map<String, dynamic>? usuario;
+
+  const UpdateScreen({super.key, this.usuario});
 
   @override
   State<UpdateScreen> createState() => _UpdateScreenState();
@@ -26,11 +28,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   List<Map<String, dynamic>> _historial = [];
   Map<String, dynamic> _estadoActual = {};
-  
-  // Variable para almacenar el estado de pago
+
   bool _pagado = false;
   String? _estadoPago;
   String? _clienteNombre;
+
+  Map<String, dynamic>? _usuario;
 
   String? _ultimaFotoUrl;
 
@@ -67,6 +70,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
       "icon": Icons.check_circle,
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _usuario = widget.usuario;
+  }
 
   @override
   void dispose() {
@@ -172,9 +181,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
     });
 
     try {
-      // Usar obtenerEstadoCompleto para obtener tambien datos de pago
       final estadoCompleto = await ApiService.obtenerEstadoCompleto(trackingId);
-      
+
       final estado = estadoCompleto['estado'] as Map<String, dynamic>;
       _pagado = estadoCompleto['pagado'] ?? false;
       _estadoPago = estadoCompleto['estado_pago'];
@@ -185,7 +193,6 @@ class _UpdateScreenState extends State<UpdateScreen> {
         _historial = _convertirEstadoAHistorial(estado);
       });
 
-      // Verificar si el paquete ya esta entregado
       if (estado['Entregado'].isNotEmpty) {
         setState(() {
           _successMessage = "Este paquete ya fue entregado";
@@ -194,19 +201,18 @@ class _UpdateScreenState extends State<UpdateScreen> {
         return;
       }
 
-      // Verificar si es la ultima etapa (Llegada_Sucursal completada, Entregado pendiente)
-      bool isLastStep = estado['Llegada_Sucursal'].isNotEmpty && 
-                        estado['Entregado'].isEmpty;
-      
+      bool isLastStep =
+          estado['Llegada_Sucursal'].isNotEmpty && estado['Entregado'].isEmpty;
+
       if (isLastStep && !_pagado) {
         setState(() {
-          _errorMessage = "CLIENTE NO HA PAGADO. No se puede marcar como entregado.";
+          _errorMessage =
+              "CLIENTE NO HA PAGADO. No se puede marcar como entregado.";
           _selectedUbicacion = null;
         });
         return;
       }
 
-      // Determinar siguiente paso
       if (estado['Ubicacion_1'].isEmpty) {
         _seleccionarUbicacion("Ubicacion_1", "Saliendo de Miami");
       } else if (estado['Ubicacion_2'].isEmpty) {
@@ -216,17 +222,16 @@ class _UpdateScreenState extends State<UpdateScreen> {
       } else if (estado['Llegada_Sucursal'].isEmpty) {
         _seleccionarUbicacion("Llegada_Sucursal", "Llego a Envios Benjamin");
       } else if (estado['Entregado'].isEmpty) {
-        // Verificar nuevamente si esta pagado antes de permitir entrega
         if (!_pagado) {
           setState(() {
-            _errorMessage = "CLIENTE NO HA PAGADO. No se puede marcar como entregado.";
+            _errorMessage =
+                "CLIENTE NO HA PAGADO. No se puede marcar como entregado.";
             _selectedUbicacion = null;
           });
         } else {
           _seleccionarUbicacion("Entregado", "Entregado al cliente");
         }
       }
-      
     } catch (e) {
       setState(() {
         _errorMessage = "Error al consultar: ${e.toString()}";
@@ -444,14 +449,16 @@ class _UpdateScreenState extends State<UpdateScreen> {
       final coords = Coordenadas.getCoordenadas(columna);
 
       if (coords != null) {
-        print('Usando coordenadas: ${coords['lat']}, ${coords['lng']} para $columna');
-        
+        print(
+          'Usando coordenadas: ${coords['lat']}, ${coords['lng']} para $columna',
+        );
+
         actualizado = await ApiService.actualizarEstadoConCoordenadas(
           trackingId,
           columna,
           label,
           coords['lat']!,
-          coords['lng']!
+          coords['lng']!,
         );
       } else {
         print('Sin coordenadas para $columna, usando endpoint normal');
@@ -591,10 +598,22 @@ class _UpdateScreenState extends State<UpdateScreen> {
         backgroundColor: midnightBlue,
         elevation: 0,
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: goldChampagne.withOpacity(0.2), height: 1.0),
-        ),
+        bottom: _usuario != null
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(30.0),
+                child: Container(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Empleado: ${_usuario!['nombre']}',
+                    style: TextStyle(
+                      color: goldChampagne.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            : null,
         actions: [
           IconButton(
             icon: Icon(Icons.qr_code_scanner, color: goldChampagne),
@@ -673,7 +692,6 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
             const SizedBox(height: 20),
 
-            // Mostrar advertencia de pago pendiente si corresponde
             if (_selectedUbicacion == 'Entregado' && !_pagado)
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 8),
@@ -685,7 +703,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.redAccent,
+                      size: 28,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -701,7 +723,10 @@ class _UpdateScreenState extends State<UpdateScreen> {
                           ),
                           Text(
                             'El cliente no ha realizado el pago. No se puede marcar como entregado.',
-                            style: TextStyle(color: Colors.redAccent.shade100, fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.redAccent.shade100,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -991,8 +1016,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
                                 _trackingController.text.isEmpty
                             ? 'ESCANEA UN QR'
                             : (_selectedUbicacion == 'Entregado' && !_pagado)
-                                ? 'PAGO PENDIENTE - NO ENTREGAR'
-                                : 'TOMAR FOTO Y CONFIRMAR',
+                            ? 'PAGO PENDIENTE - NO ENTREGAR'
+                            : 'TOMAR FOTO Y CONFIRMAR',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -1000,7 +1025,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
                               (_isLoading ||
                                   _selectedUbicacion == null ||
                                   _trackingController.text.isEmpty ||
-                                  (_selectedUbicacion == 'Entregado' && !_pagado))
+                                  (_selectedUbicacion == 'Entregado' &&
+                                      !_pagado))
                               ? textMuted
                               : midnightBlue,
                           letterSpacing: 1,

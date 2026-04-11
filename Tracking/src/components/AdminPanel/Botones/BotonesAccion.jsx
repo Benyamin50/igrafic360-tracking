@@ -1,5 +1,25 @@
-const BotonesAccion = ({ paquete, pestanaActiva, marcarComoPagado, marcarComoNoPagado, marcarComoRechazado }) => {
-  // 👈 CAMBIAR: aceptar tanto true como 1
+import React from 'react';
+
+const BotonesAccion = ({ 
+  paquete, 
+  pestanaActiva, 
+  marcarComoPagado, 
+  marcarComoNoPagado, 
+  marcarComoRechazado,
+  permisos = [],
+  userRol
+}) => {
+  
+  // ✅ Roles que pueden gestionar pagos (Admin, Contador, Empleado)
+  const rolesConPermiso = ['admin', 'super_admin', 'contador', 'empleado'];
+  const puedeGestionarPagos = rolesConPermiso.includes(userRol) || permisos.includes('gestionar_pagos');
+
+  // Si no tiene permiso, no mostramos NINGÚN botón de esta sección
+  if (!puedeGestionarPagos) {
+    return null; 
+  }
+
+  // Aceptar tanto true como 1
   const estaEnRevision = (paquete.pago_reportado === true || paquete.pago_reportado === 1) && 
                          (paquete.pagado !== true && paquete.pagado !== 1);
   

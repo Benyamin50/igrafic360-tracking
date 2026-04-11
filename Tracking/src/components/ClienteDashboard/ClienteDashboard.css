@@ -2,7 +2,7 @@
    CLIENTE DASHBOARD - DISEÑO PREMIUM & RESPONSIVE
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --gold-primary: #D4AF37;
@@ -26,7 +26,7 @@
 .client-dashboard {
   min-height: calc(100vh - 60px);
   background: radial-gradient(circle at top right, #162032 0%, #0B0F19 100%);
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -55,13 +55,14 @@
 }
 
 .client-welcome h2 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.2rem, 3vw, 1.4rem);
   margin: 0;
   background: linear-gradient(135deg, var(--gold-light), var(--gold-primary));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  font-weight: 700;
 }
 
 .client-logout-btn {
@@ -143,7 +144,7 @@
 }
 
 .client-stat-value {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: bold;
   color: var(--gold-primary);
@@ -170,13 +171,14 @@
 }
 
 .client-paquetes-list h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--gold-primary);
   font-size: 1rem;
   margin-bottom: 15px;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 
 .client-paquetes-scroll {
@@ -198,7 +200,7 @@
    🔥 MAGIA EN LAS TARJETAS DE PAQUETES 🔥
    ============================================ */
 .client-paquete-item {
-  position: relative; /* CRÍTICO para flotar el badge */
+  position: relative;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 14px;
   padding: 15px;
@@ -222,18 +224,18 @@
 }
 
 .client-paquete-id {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--gold-primary);
   margin-bottom: 6px;
   letter-spacing: 0.5px;
-  padding-right: 80px; /* Evita choque con el badge superior */
+  padding-right: 80px;
 }
 
 .client-paquete-info {
   display: flex;
-  flex-direction: column; /* Apila hacia abajo */
+  flex-direction: column;
   gap: 5px;
   font-size: 0.8rem;
 }
@@ -242,7 +244,6 @@
 .client-paquete-estado.entregado { color: var(--success); font-weight: 600; }
 .client-paquete-precio { color: var(--text-light); font-weight: 600; font-size: 0.85rem;}
 
-/* El badge flotando como iOS */
 .client-paquete-pago {
   position: absolute;
   top: 15px;
@@ -293,10 +294,11 @@
 @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
 
 .client-welcome-message h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--gold-primary);
   font-size: clamp(1.1rem, 3vw, 1.3rem);
   margin-bottom: 12px;
+  font-weight: 600;
 }
 
 .client-welcome-message p {
@@ -321,7 +323,7 @@
 }
 
 .client-tracking-right h4, .client-mapa h4 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--gold-primary);
   margin-bottom: 20px;
   font-size: 1rem;
@@ -330,6 +332,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 
 .client-mapa {
@@ -407,7 +410,6 @@
 
 @media (max-width: 768px) {
   .client-dashboard { padding: 10px; }
-  
   .client-header {
     flex-direction: column;
     text-align: center;
@@ -415,16 +417,13 @@
     padding: 20px 15px;
     border-radius: 16px;
   }
-  
   .client-logout-btn { width: 100%; }
-  
   .client-tracking-grid { grid-template-columns: 1fr; gap: 20px; }
   .client-main { padding: 20px 15px; border-radius: 16px; }
   .client-tracking-left, .client-tracking-right, .client-mapa {
     padding: 15px;
     border-radius: 16px;
   }
-  
   .client-modal-close {
     top: 10px;
     right: 10px;

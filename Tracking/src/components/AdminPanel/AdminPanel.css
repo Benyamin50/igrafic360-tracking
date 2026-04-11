@@ -2,7 +2,7 @@
    ADMIN PANEL - ESTILO PREMIUM & RESPONSIVE EXTREMO
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --wp-admin-theme-color: #D4AF37;
@@ -36,7 +36,7 @@
 .wp-admin {
   background: var(--wp-base);
   height: 100vh; /* Ocupa exactamente la pantalla */
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Evita doble scroll */
@@ -76,7 +76,7 @@
 }
 
 .wp-logo {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
   font-weight: 700;
   margin: 0;
@@ -150,7 +150,7 @@
   font-size: 0.9rem;
   text-align: left;
   transition: all 0.2s;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .wp-nav-item:hover {
@@ -223,7 +223,7 @@
 }
 
 .wp-stat-value {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: bold;
   display: block;
@@ -256,7 +256,7 @@
   padding: 14px 20px;
   color: var(--wp-text);
   font-size: 1rem;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   transition: all 0.3s;
 }
 
@@ -282,7 +282,7 @@
 
 .wp-table-container h3,
 .wp-qr-card h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--wp-admin-theme-color);
   margin-bottom: 20px;
   border-bottom: 1px dashed var(--wp-border);
@@ -354,12 +354,13 @@
 .wp-btn {
   padding: 10px 16px;
   border-radius: 8px;
+  margin-top: 10px;
   border: 1px solid transparent;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   min-height: 40px; 
   display: inline-flex;
   align-items: center;
@@ -404,7 +405,7 @@
 
 .wp-ref {
   font-size: 0.75rem;
-  font-family: monospace;
+  font-family: 'Poppins', sans-serif;
   color: var(--wp-admin-theme-color);
   background: rgba(0, 0, 0, 0.4);
   padding: 4px 8px;
@@ -454,7 +455,7 @@
 }
 
 .wp-modal-header h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   margin: 0;
   font-size: 1.2rem;
   color: var(--wp-admin-theme-color);
@@ -582,6 +583,7 @@
     font-size: 0.75rem;
     text-align: left;
     margin-right: 15px;
+    font-family: 'Poppins', sans-serif;
   }
 
   .wp-actions-group {

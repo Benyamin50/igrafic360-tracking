@@ -1,6 +1,10 @@
 /* EstadisticasPanel.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
 .estadisticas-panel {
   padding: 0;
+  font-family: 'Poppins', sans-serif; /* Unificada a Poppins */
 }
 
 /* Filtros de fecha */
@@ -20,6 +24,7 @@
   cursor: pointer;
   transition: all 0.3s;
   font-size: 0.85rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .filtro-fecha-btn:hover {
@@ -74,9 +79,9 @@
 }
 
 .resumen-valor {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif; /* Cambiado a Poppins */
   font-size: 1.3rem;
-  font-weight: bold;
+  font-weight: 800; /* Peso fuerte para mantener impacto */
   color: #D4AF37;
 }
 
@@ -86,6 +91,7 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 4px;
+  font-weight: 600;
 }
 
 /* Gráfico */
@@ -99,10 +105,13 @@
 }
 
 .grafico-container h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif; /* Cambiado a Poppins */
   color: #D4AF37;
   margin-bottom: 20px;
   font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* Dos columnas */
@@ -121,10 +130,12 @@
 }
 
 .top-clientes h3, .distribucion-pagos h3 {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif; /* Cambiado a Poppins */
   color: #D4AF37;
   margin-bottom: 15px;
   font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .top-clientes-tabla {
@@ -140,6 +151,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  font-weight: 600;
 }
 
 .top-clientes-tabla td {
@@ -174,6 +186,7 @@
   gap: 8px;
   font-size: 0.8rem;
   color: #E2E8F0;
+  font-weight: 500;
 }
 
 .color-dot {
@@ -243,5 +256,5 @@
 .no-data-message p:first-child {
   color: #D4AF37;
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 700;
 }

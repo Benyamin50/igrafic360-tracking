@@ -5,11 +5,13 @@ import { ApiService } from '../../services/api';
 import './AdminPanel.css';
 
 import EstadisticasPanel from './EstadisticasPanel/EstadisticasPanel';
+import RendimientoPanel from './EstadisticasPanel/RendimientoPanel';
 import TablaPendientes from './Tablas/TablaPendientes';
 import TablaProcesoPagado from './Tablas/TablaProcesoPagado';
 import TablaProcesoNoPagado from './Tablas/TablaProcesoNoPagado';
 import TablaCompletados from './Tablas/TablaCompletados';
 import TablaAdvertencia from './Tablas/TablaAdvertencia';
+import TablaEmpleados from './Tablas/TablaEmpleados';
 import ModalComprobante from './Modales/ModalComprobante';
 import ModalEditarPaquete from './Modales/ModalEditarPaquete';
 import ModalQR from './Modales/ModalQR';
@@ -46,7 +48,7 @@ const esFantasma = (valor) => {
   return valor === true || valor === 1;
 };
 
-const AdminPanel = ({ onRegistroExitoso }) => {
+const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', permisos = [] }) => {
   const [paquetes, setPaquetes] = useState([]);
   const [mostrarQR, setMostrarQR] = useState(null);
   const [qrGenerado, setQrGenerado] = useState(null);
@@ -55,7 +57,9 @@ const AdminPanel = ({ onRegistroExitoso }) => {
   const [error, setError] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pestanaActiva, setPestanaActiva] = useState('pendientes');
+  const [esSuperAdmin, setEsSuperAdmin] = useState(false);
+  const [currentUserUid, setCurrentUserUid] = useState(null);
+  
   const [paqueteAEditar, setPaqueteAEditar] = useState(null);
   const [editando, setEditando] = useState(false);
   const [fotoVer, setFotoVer] = useState(null);
@@ -76,6 +80,79 @@ const AdminPanel = ({ onRegistroExitoso }) => {
     total: 0, pendientes: 0, procesoPagado: 0, procesoNoPagado: 0, completados: 0, advertencia: 0, ingresosMes: 0, sinIdentificar: 0
   });
   const [filtros, setFiltros] = useState({ busqueda: '', fechaInicio: '', fechaFin: '', estado: 'todos' });
+
+  const [totalEmpleados, setTotalEmpleados] = useState(0);
+
+  // LOGICA DE MENU BASADA EN ROL
+  const getMenuItems = () => {
+    // Super Admin ve todo
+    if (esSuperAdmin) {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'empleados', label: 'Empleados', icon: '👥' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    // Admin: todo EXCEPTO empleados (pero SÍ ve rendimiento)
+    if (userRol === 'admin') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    // Contador: NO ve rendimiento, NO ve empleados
+    if (userRol === 'contador') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    // Empleado: NO ve estadisticas, NO ve rendimiento, NO ve empleados
+    if (userRol === 'empleado') {
+      return [
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    return [];
+  };
+
+  const menuItems = getMenuItems();
+  const [pestanaActiva, setPestanaActiva] = useState(menuItems.length > 0 ? menuItems[0].id : '');
+
+  useEffect(() => {
+    if (menuItems.length > 0) {
+      const tieneAcceso = menuItems.some(item => item.id === pestanaActiva);
+      if (!tieneAcceso) {
+        setPestanaActiva(menuItems[0].id);
+      }
+    }
+  }, [userRol, esSuperAdmin, pestanaActiva, menuItems]);
 
   const cargarPaquetes = useCallback(async (cargarMas = false, forzarFresco = false, reset = false) => {
     if (cargarMas && !pagination.has_more) return;
@@ -111,7 +188,7 @@ const AdminPanel = ({ onRegistroExitoso }) => {
         setPagination(data.pagination);
         calcularEstadisticas(nuevosPaquetes);
       } else if (response.status === 403) {
-        setError('No tienes permiso para ver los paquetes. Solo administradores.');
+        setError('No tienes permiso para ver los paquetes.');
       } else if (response.status === 429) {
         setError('Demasiadas peticiones. Espera un momento.');
       } else if (response.status === 401) {
@@ -147,7 +224,6 @@ const AdminPanel = ({ onRegistroExitoso }) => {
       p.peso !== 'N/A' && 
       (p.precio !== 'Pendiente' || p.precio_usd !== 'Pendiente') && 
       !estaPagado(p.pagado) && 
-      (p.pago_reportado === true || p.pago_reportado === 1) &&
       (!p.Entregado || p.Entregado === '') && 
       p.cliente_uid
     ).length;
@@ -192,6 +268,29 @@ const AdminPanel = ({ onRegistroExitoso }) => {
         });
         
         if (response.ok) {
+          const data = await response.json();
+          const rol = data.cliente?.rol;
+          const uid = data.cliente?.uid;
+          setEsSuperAdmin(data.cliente?.es_super_admin === 1);
+          setCurrentUserUid(uid);
+          
+          if (rol === 'admin' || data.cliente?.es_super_admin === 1) {
+            try {
+              const respEmp = await fetch(`${API_URL}/api/admin/empleados`, {
+                credentials: 'include',
+                headers: getAuthHeaders()
+              });
+              if (respEmp.ok) {
+                const dataEmp = await respEmp.json();
+                const lista = dataEmp.empleados || [];
+                const soloStaff = lista.filter(u => u.rol && u.rol !== 'cliente');
+                setTotalEmpleados(soloStaff.length);
+              }
+            } catch (e) {
+              console.error("Error cargando conteo inicial de empleados", e);
+            }
+          }
+          
           cargarPaquetes(false, true);
         } else {
           setError('No hay sesion activa. Por favor, inicia sesion.');
@@ -382,15 +481,20 @@ const AdminPanel = ({ onRegistroExitoso }) => {
   const pCompletados = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && estaPagado(p.pagado) && p.cliente_uid));
   const pAdvertencia = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && !estaPagado(p.pagado) && p.cliente_uid));
 
-  const menuItems = [
-    { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-    { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻', count: pSinIdentificar.length },
-    { id: 'pendientes', label: 'Por Recibir', icon: '📌', count: pPendientes.length },
-    { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚', count: pProcesoPagado.length },
-    { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️', count: pProcesoNoPagado.length },
-    { id: 'completados', label: 'Completados', icon: '✅', count: pCompletados.length },
-    { id: 'advertencia', label: 'Advertencia', icon: '🔴', count: pAdvertencia.length },
-  ];
+  const menuItemsWithCounts = menuItems.map(item => {
+    switch(item.id) {
+      case 'empleados': return { ...item, count: totalEmpleados };
+      case 'sin-identificar': return { ...item, count: pSinIdentificar.length };
+      case 'pendientes': return { ...item, count: pPendientes.length };
+      case 'proceso-pagado': return { ...item, count: pProcesoPagado.length };
+      case 'proceso-no-pagado': return { ...item, count: pProcesoNoPagado.length };
+      case 'completados': return { ...item, count: pCompletados.length };
+      case 'advertencia': return { ...item, count: pAdvertencia.length };
+      default: return item;
+    }
+  });
+
+  const nombreRolHeader = esSuperAdmin ? 'Super Admin' : (userRol.charAt(0).toUpperCase() + userRol.slice(1));
 
   return (
     <div className="wp-admin">
@@ -399,13 +503,15 @@ const AdminPanel = ({ onRegistroExitoso }) => {
           <button className="wp-menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
           <h1 className="wp-logo">Controla los paquetes</h1>
         </div>
-        <div className="wp-header-right"><span className="wp-user">Admin</span></div>
+        <div className="wp-header-right">
+          <span className="wp-user">{nombreRolHeader}</span>
+        </div>
       </header>
 
       <div className="wp-container">
         <aside className={`wp-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <nav className="wp-nav">
-            {menuItems.map(item => (
+            {menuItemsWithCounts.map(item => (
               <button key={item.id} className={`wp-nav-item ${pestanaActiva === item.id ? 'active' : ''}`} onClick={() => { setPestanaActiva(item.id); setSidebarOpen(false); }}>
                 <span className="wp-nav-icon">{item.icon}</span>
                 <span className="wp-nav-label">{item.label}</span>
@@ -416,65 +522,132 @@ const AdminPanel = ({ onRegistroExitoso }) => {
         </aside>
 
         <main className="wp-main" ref={scrollContainerRef} style={{ maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-          {cargando && primeraCarga && <div className="wp-notice wp-notice-loading"><div className="wp-spinner"></div><span>Cargando paquetes...</span></div>}
-          {mensajeExito && !cargando && <div className="wp-notice wp-notice-success"><span>{mensajeExito}</span><button onClick={() => setMensajeExito('')} className="wp-notice-close">✕</button></div>}
-          {error && !cargando && <div className="wp-notice wp-notice-error"><span>{error}</span><button onClick={() => setError('')} className="wp-notice-close">✕</button></div>}
+          {menuItems.length === 0 ? (
+             <div className="wp-notice wp-notice-error">
+                <span>No tienes permisos asignados. Contacta a un administrador.</span>
+             </div>
+          ) : (
+            <>
+              {cargando && primeraCarga && <div className="wp-notice wp-notice-loading"><div className="wp-spinner"></div><span>Cargando paquetes...</span></div>}
+              {mensajeExito && !cargando && <div className="wp-notice wp-notice-success"><span>{mensajeExito}</span><button onClick={() => setMensajeExito('')} className="wp-notice-close">✕</button></div>}
+              {error && !cargando && <div className="wp-notice wp-notice-error"><span>{error}</span><button onClick={() => setError('')} className="wp-notice-close">✕</button></div>}
 
-          {pestanaActiva === 'estadisticas' && <EstadisticasPanel paquetes={paquetes} estadisticas={estadisticas} />}
+              {pestanaActiva === 'estadisticas' && <EstadisticasPanel paquetes={paquetes} estadisticas={estadisticas} />}
+              {pestanaActiva === 'rendimiento' && <RendimientoPanel paquetes={paquetes} />}
+              
+              {pestanaActiva === 'empleados' && (
+                <TablaEmpleados 
+                  onRolActualizado={onRolActualizado} 
+                  onLoadTotal={(n) => setTotalEmpleados(n)}
+                  currentUserUid={currentUserUid}
+                  esSuperAdmin={esSuperAdmin}
+                />
+              )}
 
-          {pestanaActiva !== 'estadisticas' && (
-            <div className="wp-search-box">
-              <input type="text" placeholder="Buscar por ID..." value={filtros.busqueda} onChange={(e) => setFiltros({ ...filtros, busqueda: e.target.value })} className="wp-search-input" />
-            </div>
-          )}
-
-          {pestanaActiva !== 'estadisticas' && (
-            <div className="wp-qr-grid">
-              <div className="wp-qr-card">
-                <h3>Generar QR / Registro</h3>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button onClick={generarQR} className="wp-btn wp-btn-primary" disabled={cargando}>Generar QR VNZ</button>
+              {/* Barra de búsqueda - excepto en ciertas pestañas */}
+              {pestanaActiva !== 'estadisticas' && pestanaActiva !== 'empleados' && pestanaActiva !== 'rendimiento' && (
+                <div className="wp-search-box">
+                  <input type="text" placeholder="Buscar por ID..." value={filtros.busqueda} onChange={(e) => setFiltros({ ...filtros, busqueda: e.target.value })} className="wp-search-input" />
                 </div>
-                {qrGenerado && (
-                  <div className="wp-qr-container" style={{ marginTop: '20px' }}>
-                    <QRCodeCanvas value={qrGenerado} size={200} bgColor="#ffffff" fgColor="#000000" level="H" includeMargin={true} />
-                    <p className="wp-qr-id" style={{ marginTop: '10px' }}>{qrGenerado}</p>
-                    <div className="wp-qr-actions" style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center' }}>
-                      <button onClick={() => { const c = document.querySelector('.wp-qr-container canvas'); if (c) { const l = document.createElement('a'); l.download = `QR-${qrGenerado}.png`; l.href = c.toDataURL(); l.click(); } }} className="wp-btn wp-btn-secondary">Descargar</button>
-                      <button onClick={() => setQrGenerado(null)} className="wp-btn wp-btn-secondary">Cerrar</button>
-                    </div>
+              )}
+
+              {/* BOTÓN "+" SOLO EN LA PESTAÑA "POR RECIBIR" (pendientes) */}
+              {pestanaActiva === 'pendientes' && (userRol !== 'cliente') && (
+                <div className="wp-plus-button-container" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                  <button 
+                    onClick={generarQR} 
+                    className="wp-btn-plus" 
+                    disabled={cargando}
+                    style={{
+                      background: '#D4AF37',
+                      color: '#000',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '50px',
+                      height: '50px',
+                      fontSize: '28px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      transition: 'transform 0.2s, background 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#c49b1a'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#D4AF37'; }}
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+
+              {/* Mostrar QR generado */}
+              {qrGenerado && pestanaActiva === 'pendientes' && (
+                <div className="wp-qr-popup" style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: '#1A202C',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                  zIndex: 1000,
+                  textAlign: 'center',
+                  border: '1px solid #D4AF37'
+                }}>
+                  <button onClick={() => setQrGenerado(null)} style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '20px',
+                    cursor: 'pointer'
+                  }}>✕</button>
+                  <QRCodeCanvas value={qrGenerado} size={200} bgColor="#ffffff" fgColor="#000000" level="H" includeMargin={true} />
+                  <p className="wp-qr-id" style={{ marginTop: '10px', color: '#D4AF37' }}>{qrGenerado}</p>
+                  <div className="wp-qr-actions" style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center' }}>
+                    <button onClick={() => { const canvas = document.querySelector('.wp-qr-popup canvas'); if (canvas) { const link = document.createElement('a'); link.download = `QR-${qrGenerado}.png`; link.href = canvas.toDataURL(); link.click(); } }} style={{ background: '#D4AF37', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Descargar</button>
+                    <button onClick={() => setQrGenerado(null)} style={{ background: '#4A5568', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Cerrar</button>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {pestanaActiva === 'sin-identificar' && <TablaSinIdentificar paquetes={pSinIdentificar} onAsignar={handleAsignarCliente} />}
-          {pestanaActiva === 'pendientes' && <TablaPendientes paquetes={pPendientes} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} handleEditar={handleEditar} onAsignar={handleAsignarCliente} onMarcarFantasma={handleMarcarFantasma} />}
-          {pestanaActiva === 'proceso-pagado' && <TablaProcesoPagado paquetes={pProcesoPagado} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} marcarComoNoPagado={marcarComoNoPagado} />}
-          {pestanaActiva === 'proceso-no-pagado' && <TablaProcesoNoPagado 
-            paquetes={pProcesoNoPagado} 
-            renderInfoPagoReportado={renderInfoPagoReportado} 
-            handleVerQR={handleVerQR} 
-            pestanaActiva={pestanaActiva} 
-            marcarComoPagado={marcarComoPagado} 
-            marcarComoNoPagado={marcarComoNoPagado} 
-            marcarComoRechazado={marcarComoRechazado} 
-          />}
-          {pestanaActiva === 'completados' && <TablaCompletados paquetes={pCompletados} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} marcarComoNoPagado={marcarComoNoPagado} />}
-          {pestanaActiva === 'advertencia' && <TablaAdvertencia paquetes={pAdvertencia} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} pestanaActiva={pestanaActiva} marcarComoPagado={marcarComoPagado} marcarComoNoPagado={marcarComoNoPagado} marcarComoRechazado={marcarComoRechazado} />}
+              {pestanaActiva === 'sin-identificar' && <TablaSinIdentificar paquetes={pSinIdentificar} onAsignar={handleAsignarCliente} permisos={permisos} userRol={userRol} />}
+              {pestanaActiva === 'pendientes' && <TablaPendientes paquetes={pPendientes} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} handleEditar={handleEditar} onAsignar={handleAsignarCliente} onMarcarFantasma={handleMarcarFantasma} permisos={permisos} userRol={userRol} />}
+              {pestanaActiva === 'proceso-pagado' && <TablaProcesoPagado paquetes={pProcesoPagado} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} marcarComoNoPagado={marcarComoNoPagado} permisos={permisos} userRol={userRol} />}
+              
+              {pestanaActiva === 'proceso-no-pagado' && <TablaProcesoNoPagado 
+                paquetes={pProcesoNoPagado} 
+                renderInfoPagoReportado={renderInfoPagoReportado} 
+                handleVerQR={handleVerQR} 
+                pestanaActiva={pestanaActiva} 
+                marcarComoPagado={marcarComoPagado} 
+                marcarComoNoPagado={marcarComoNoPagado} 
+                marcarComoRechazado={marcarComoRechazado} 
+                permisos={permisos}
+                userRol={userRol}
+              />}
+              
+              {pestanaActiva === 'completados' && <TablaCompletados paquetes={pCompletados} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} marcarComoNoPagado={marcarComoNoPagado} permisos={permisos} userRol={userRol} />}
+              {pestanaActiva === 'advertencia' && <TablaAdvertencia paquetes={pAdvertencia} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} pestanaActiva={pestanaActiva} marcarComoPagado={marcarComoPagado} marcarComoNoPagado={marcarComoNoPagado} marcarComoRechazado={marcarComoRechazado} permisos={permisos} userRol={userRol} />}
 
-          {cargandoMas && (
-            <div className="wp-loading-more" style={{ textAlign: 'center', padding: '20px', color: '#A0AEC0' }}>
-              <div className="wp-spinner-mini"></div>
-              <span>Cargando mas paquetes...</span>
-            </div>
-          )}
+              {cargandoMas && (
+                <div className="wp-loading-more" style={{ textAlign: 'center', padding: '20px', color: '#A0AEC0' }}>
+                  <div className="wp-spinner-mini"></div>
+                  <span>Cargando mas paquetes...</span>
+                </div>
+              )}
 
-          {!pagination.has_more && paquetes.length > 0 && !cargando && (
-            <div className="wp-end-list" style={{ textAlign: 'center', padding: '20px', color: '#A0AEC0' }}>
-              No hay mas paquetes para mostrar
-            </div>
+              {!pagination.has_more && paquetes.length > 0 && !cargando && (
+                <div className="wp-end-list" style={{ textAlign: 'center', padding: '20px', color: '#A0AEC0' }}>
+                  No hay mas paquetes para mostrar
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

@@ -2,24 +2,24 @@
    STATUS CARD - DISEÑO PREMIUM & RESPONSIVE
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 /* CONTENEDOR PRINCIPAL */
 .status-card-container {
   background: transparent; 
   padding: clamp(10px, 3vw, 20px);
   text-align: left;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   animation: fadeIn 0.4s ease-out;
 }
 
 /* EL NÚMERO DE TRACKING (PROTAGONISTA) */
 .main-tracking-id {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.8rem, 5vw, 2.4rem); /* Responsive fluid typography */
   margin-top: 0;
   margin-bottom: 25px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 2px;
   border-bottom: 1px solid rgba(212, 175, 55, 0.2);
   padding-bottom: 15px;
@@ -32,12 +32,12 @@
 
 /* TÍTULO DE DETALLES */
 .details-title {
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1rem, 3vw, 1.1rem);
   color: #D4AF37;
   margin-bottom: 20px;
   margin-top: 0;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -128,7 +128,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .btn-calcular-bcv:hover:not(:disabled) {
@@ -252,7 +252,7 @@
   margin: 20px 0;
   font-weight: 600;
   text-align: center;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 0.9rem;
 }
 
@@ -279,9 +279,9 @@
   margin-top: 0;
   margin-bottom: 20px;
   color: #D4AF37;
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -635,10 +635,11 @@
 
 .modal-opciones-card h4 {
   color: #D4AF37;
-  font-family: 'Cinzel', serif;
+  font-family: 'Poppins', sans-serif;
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 1.4rem;
+  font-weight: 700;
 }
 
 .modal-opciones-card p {

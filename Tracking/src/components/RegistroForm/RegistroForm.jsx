@@ -24,6 +24,11 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
     const newData = { ...formData, [name]: value };
     setFormData(newData);
     
+    // Limpiar error de observaciones cuando el usuario empieza a escribir
+    if (name === 'observaciones' && errores.observaciones) {
+      setErrores(prev => ({ ...prev, observaciones: '' }));
+    }
+    
     if (['pesoReal', 'alto', 'largo', 'ancho', 'destino', 'tipoEnvio'].includes(name)) {
       recalcularPrecio(newData);
     }
@@ -60,6 +65,11 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
     e.preventDefault();
     const erroresTemp = {};
     
+    // ✅ VALIDACIÓN DE OBSERVACIONES (OBLIGATORIO)
+    if (!formData.observaciones.trim()) {
+      erroresTemp.observaciones = 'Debes agregar una observación o descripción del paquete';
+    }
+    
     if (formData.tipoEnvio === 'aereo' && !formData.pesoReal && (!formData.alto || !formData.largo || !formData.ancho)) {
       erroresTemp.general = 'Debes ingresar peso real o dimensiones para envios aereos';
     }
@@ -72,14 +82,17 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
       return;
     }
     
-    const modoTexto = formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo';
+    // ✅ ELIMINADA la generación manual de fecha
+    // Las fechas las asigna el servidor automáticamente
+    
     const datosFormateados = {
       origen: formData.origen,
       peso: calculo ? calculo.pesoACobrarTexto : '',
       precio: calculo ? `$${calculo.totalUSD}` : '', 
-      observaciones: `${modoTexto} Destino: ${formData.destino} | ${formData.observaciones}`,
+      observaciones: `${formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo'} Destino: ${formData.destino} | ${formData.observaciones}`,
       peso_volumetrico: calculo?.pesoVolumetricoKg || calculo?.piesCubicos,
       tasa_usada: calculo?.tasaEUR
+      // ❌ NO se envian fechas desde el cliente
     };
     
     onSubmit(datosFormateados);
@@ -190,8 +203,23 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
       )}
 
       <div className="form-group">
-        <label>Observaciones:</label>
-        <textarea name="observaciones" value={formData.observaciones} onChange={handleChange} rows="3" disabled={cargando} />
+        <label>Observaciones <span style={{ color: '#f87171' }}>*</span></label>
+        <textarea 
+          name="observaciones" 
+          value={formData.observaciones} 
+          onChange={handleChange} 
+          rows="3" 
+          disabled={cargando}
+          placeholder="Ej: Celular iPhone 13, color azul, con funda..."
+          style={{
+            borderColor: errores.observaciones ? '#f87171' : 'rgba(212, 175, 55, 0.3)'
+          }}
+        />
+        {errores.observaciones && (
+          <small style={{ color: '#f87171', marginTop: '4px', display: 'block' }}>
+            ⚠️ {errores.observaciones}
+          </small>
+        )}
       </div>
 
       <button type="submit" className="btn-submit" disabled={cargando || calculando || !calculo}>

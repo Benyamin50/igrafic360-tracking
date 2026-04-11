@@ -1,7 +1,17 @@
 import React from 'react';
 import BotonesAccion from '../Botones/BotonesAccion';
 
-const TablaProcesoNoPagado = ({ paquetes, renderInfoPagoReportado, handleVerQR, pestanaActiva, marcarComoPagado, marcarComoNoPagado, marcarComoRechazado }) => {
+const TablaProcesoNoPagado = ({ 
+  paquetes, 
+  renderInfoPagoReportado, 
+  handleVerQR, 
+  pestanaActiva, 
+  marcarComoPagado, 
+  marcarComoNoPagado, 
+  marcarComoRechazado,
+  permisos = [], // 👇 NUEVO: Recibimos los permisos
+  userRol        // 👇 NUEVO: Recibimos el rol
+}) => {
   return (
     <div className="wp-table-container">
       <h3>⚠️ Paquetes en Proceso (NO Pagados)</h3>
@@ -30,6 +40,8 @@ const TablaProcesoNoPagado = ({ paquetes, renderInfoPagoReportado, handleVerQR, 
                       marcarComoPagado={marcarComoPagado} 
                       marcarComoNoPagado={marcarComoNoPagado} 
                       marcarComoRechazado={marcarComoRechazado} 
+                      permisos={permisos} // 👇 NUEVO: Se lo pasamos a los botones
+                      userRol={userRol}   // 👇 NUEVO: Se lo pasamos a los botones
                     />
                   </td>
                 </tr>

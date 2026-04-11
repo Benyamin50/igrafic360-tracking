@@ -1,6 +1,23 @@
 import React from 'react';
 
-const BotonesPago = ({ paquete, pestanaActiva, marcarComoPagado, marcarComoNoPagado, marcarComoRechazado }) => {
+const BotonesPago = ({ 
+  paquete, 
+  pestanaActiva, 
+  marcarComoPagado, 
+  marcarComoNoPagado, 
+  marcarComoRechazado,
+  userRol  // 👈 Recibir el rol
+}) => {
+  
+  // ✅ Roles que pueden gestionar pagos
+  const rolesConPermiso = ['admin', 'super_admin', 'contador', 'empleado'];
+  const puedeGestionarPagos = rolesConPermiso.includes(userRol);
+  
+  // Si no tiene permiso, no mostrar botones
+  if (!puedeGestionarPagos) {
+    return null;
+  }
+  
   const estaEnRevision = paquete.pago_reportado === true && paquete.pagado !== true;
   const estaPagado = paquete.pagado === true;
   const esAdvertencia = pestanaActiva === 'advertencia';
