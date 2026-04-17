@@ -1,18 +1,19 @@
 // src/components/AdminPanel/Modales/RegistroForm.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { calcularEnvio, DESTINOS } from '../../config/tarifas';
 import './RegistroForm.css';
 
-const RegistroForm = ({ onSubmit, cargando = false }) => {
+const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCliente = {} }) => {
   const [formData, setFormData] = useState({
     origen: 'Miami',
     destino: 'Caracas',
-    tipoEnvio: 'aereo',
+    tipoEnvio: esPrealerta ? (datosCliente.tipo_envio || 'aereo') : 'aereo',
     pesoReal: '',
     alto: '',
     largo: '',
     ancho: '',
-    observaciones: ''
+    // Si NO es prealerta, empezamos con observaciones vacías
+    observaciones: !esPrealerta ? '' : (datosCliente.observaciones || '') 
   });
 
   const [calculo, setCalculo] = useState(null);
@@ -24,7 +25,6 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
     const newData = { ...formData, [name]: value };
     setFormData(newData);
     
-    // Limpiar error de observaciones cuando el usuario empieza a escribir
     if (name === 'observaciones' && errores.observaciones) {
       setErrores(prev => ({ ...prev, observaciones: '' }));
     }
@@ -65,9 +65,9 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
     e.preventDefault();
     const erroresTemp = {};
     
-    // ✅ VALIDACIÓN DE OBSERVACIONES (OBLIGATORIO)
-    if (!formData.observaciones.trim()) {
-      erroresTemp.observaciones = 'Debes agregar una observación o descripción del paquete';
+    // Solo validar observaciones si NO es prealerta
+    if (!esPrealerta && !formData.observaciones.trim()) {
+      erroresTemp.observaciones = 'Debes agregar una observacion o descripcion del paquete';
     }
     
     if (formData.tipoEnvio === 'aereo' && !formData.pesoReal && (!formData.alto || !formData.largo || !formData.ancho)) {
@@ -82,39 +82,102 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
       return;
     }
     
-    // ✅ ELIMINADA la generación manual de fecha
-    // Las fechas las asigna el servidor automáticamente
-    
     const datosFormateados = {
       origen: formData.origen,
       peso: calculo ? calculo.pesoACobrarTexto : '',
-      precio: calculo ? `$${calculo.totalUSD}` : '', 
-      observaciones: `${formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo'} Destino: ${formData.destino} | ${formData.observaciones}`,
+      precio: calculo ? `$${calculo.totalUSD}` : '',
+      observaciones: esPrealerta 
+        ? datosCliente.observaciones // Si es prealerta, usa la original
+        : `${formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo'} Destino: ${formData.destino} | ${formData.observaciones}`,
       peso_volumetrico: calculo?.pesoVolumetricoKg || calculo?.piesCubicos,
-      tasa_usada: calculo?.tasaEUR
-      // ❌ NO se envian fechas desde el cliente
+      tasa_usada: calculo?.tasaEUR,
+      tipoEnvio: formData.tipoEnvio
     };
     
     onSubmit(datosFormateados);
     
-    setFormData({
-      origen: 'Miami', destino: 'Caracas', tipoEnvio: 'aereo',
-      pesoReal: '', alto: '', largo: '', ancho: '', observaciones: ''
-    });
-    setCalculo(null);
-    setErrores({});
+    // Solo resetear si NO es prealerta
+    if (!esPrealerta) {
+      setFormData({
+        origen: 'Miami', destino: 'Caracas', tipoEnvio: 'aereo',
+        pesoReal: '', alto: '', largo: '', ancho: '', observaciones: ''
+      });
+      setCalculo(null);
+      setErrores({});
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="registro-form">
       
+      {/* Informacion de prealerta si aplica */}
+      {esPrealerta && (
+        <div className="prealerta-info" style={{ background: 'rgba(212, 175, 55, 0.1)', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+          <p style={{ color: '#D4AF37', marginBottom: '5px', fontWeight: 'bold' }}>
+            📋 Este paquete fue registrado por el cliente mediante PREALERTA
+          </p>
+          <p style={{ fontSize: '13px', color: '#A0AEC0', marginBottom: '5px' }}>
+            Tracking original: <strong>{datosCliente.tracking_original || 'N/A'}</strong>
+          </p>
+          <p style={{ fontSize: '13px', color: '#A0AEC0', marginBottom: '5px' }}>
+            Tipo de envio elegido por el cliente: 
+            <strong style={{ color: datosCliente.tipo_envio === 'aereo' ? '#D4AF37' : '#3182CE', marginLeft: '5px' }}>
+              {datosCliente.tipo_envio === 'aereo' ? '✈️ AEREO' : '🚢 MARITIMO'}
+            </strong>
+          </p>
+          <p style={{ fontSize: '13px', color: '#A0AEC0' }}>
+            Descripcion: <strong>{datosCliente.observaciones || 'N/A'}</strong>
+          </p>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <label style={{ flex: 1, padding: '15px', background: formData.tipoEnvio === 'aereo' ? '#D4AF37' : '#1A202C', color: formData.tipoEnvio === 'aereo' ? '#000' : '#fff', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', border: '1px solid #D4AF37', transition: '0.3s' }}>
-          <input type="radio" name="tipoEnvio" value="aereo" checked={formData.tipoEnvio === 'aereo'} onChange={handleChange} style={{ display: 'none' }} />
+        <label style={{ 
+          flex: 1, 
+          padding: '15px', 
+          background: formData.tipoEnvio === 'aereo' ? '#D4AF37' : '#1A202C', 
+          color: formData.tipoEnvio === 'aereo' ? '#000' : '#fff', 
+          textAlign: 'center', 
+          borderRadius: '8px', 
+          cursor: esPrealerta ? 'not-allowed' : 'pointer', 
+          fontWeight: 'bold', 
+          border: '1px solid #D4AF37', 
+          transition: '0.3s',
+          opacity: esPrealerta ? 0.7 : 1
+        }}>
+          <input 
+            type="radio" 
+            name="tipoEnvio" 
+            value="aereo" 
+            checked={formData.tipoEnvio === 'aereo'} 
+            onChange={handleChange} 
+            disabled={esPrealerta}
+            style={{ display: 'none' }} 
+          />
           Aereo
         </label>
-        <label style={{ flex: 1, padding: '15px', background: formData.tipoEnvio === 'maritimo' ? '#3182CE' : '#1A202C', color: formData.tipoEnvio === 'maritimo' ? '#fff' : '#fff', textAlign: 'center', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', border: '1px solid #3182CE', transition: '0.3s' }}>
-          <input type="radio" name="tipoEnvio" value="maritimo" checked={formData.tipoEnvio === 'maritimo'} onChange={handleChange} style={{ display: 'none' }} />
+        <label style={{ 
+          flex: 1, 
+          padding: '15px', 
+          background: formData.tipoEnvio === 'maritimo' ? '#3182CE' : '#1A202C', 
+          color: formData.tipoEnvio === 'maritimo' ? '#fff' : '#fff', 
+          textAlign: 'center', 
+          borderRadius: '8px', 
+          cursor: esPrealerta ? 'not-allowed' : 'pointer', 
+          fontWeight: 'bold', 
+          border: '1px solid #3182CE', 
+          transition: '0.3s',
+          opacity: esPrealerta ? 0.7 : 1
+        }}>
+          <input 
+            type="radio" 
+            name="tipoEnvio" 
+            value="maritimo" 
+            checked={formData.tipoEnvio === 'maritimo'} 
+            onChange={handleChange} 
+            disabled={esPrealerta}
+            style={{ display: 'none' }} 
+          />
           Maritimo
         </label>
       </div>
@@ -202,27 +265,52 @@ const RegistroForm = ({ onSubmit, cargando = false }) => {
         </div>
       )}
 
-      <div className="form-group">
-        <label>Observaciones <span style={{ color: '#f87171' }}>*</span></label>
-        <textarea 
-          name="observaciones" 
-          value={formData.observaciones} 
-          onChange={handleChange} 
-          rows="3" 
-          disabled={cargando}
-          placeholder="Ej: Celular iPhone 13, color azul, con funda..."
-          style={{
-            borderColor: errores.observaciones ? '#f87171' : 'rgba(212, 175, 55, 0.3)'
-          }}
-        />
-        {errores.observaciones && (
-          <small style={{ color: '#f87171', marginTop: '4px', display: 'block' }}>
-            ⚠️ {errores.observaciones}
-          </small>
-        )}
-      </div>
+      {/* Campo observaciones - SOLO VISIBLE SI NO ES PREALERTA */}
+      {!esPrealerta && (
+        <div className="form-group">
+          <label>Observaciones <span style={{ color: '#f87171' }}>*</span></label>
+          <textarea 
+            name="observaciones" 
+            value={formData.observaciones} 
+            onChange={handleChange} 
+            rows="3" 
+            disabled={cargando}
+            placeholder="Ej: Celular iPhone 13, color azul, con funda..."
+            style={{
+              borderColor: errores.observaciones ? '#f87171' : 'rgba(212, 175, 55, 0.3)'
+            }}
+          />
+          {errores.observaciones && (
+            <small style={{ color: '#f87171', marginTop: '4px', display: 'block' }}>
+              ⚠️ {errores.observaciones}
+            </small>
+          )}
+        </div>
+      )}
 
-      <button type="submit" className="btn-submit" disabled={cargando || calculando || !calculo}>
+      {/* Si es prealerta, mostrar la descripcion que puso el cliente (solo lectura) */}
+      {esPrealerta && datosCliente.observaciones && (
+        <div className="form-group">
+          <label>Descripcion del cliente:</label>
+          <textarea 
+            value={datosCliente.observaciones} 
+            rows="3" 
+            disabled={true}
+            style={{
+              background: '#0B0F19',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              borderRadius: '8px',
+              color: '#A0AEC0',
+              padding: '12px',
+              width: '100%',
+              resize: 'vertical'
+            }}
+          />
+          <small style={{ color: '#718096' }}>El cliente ya registro esta descripcion al hacer la prealerta</small>
+        </div>
+      )}
+
+      <button type="submit" className="btn-submit" disabled={cargando || calculando || (!esPrealerta && !calculo)}>
         {cargando ? 'Registrando...' : calculando ? 'Calculando...' : `Registrar Paquete ${formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo'}`}
       </button>
     </form>

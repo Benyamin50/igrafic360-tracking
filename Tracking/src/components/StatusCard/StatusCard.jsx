@@ -50,12 +50,12 @@ const LazyImage = ({ src, alt, className }) => {
   );
 };
 
-const StatusCard = ({ 
-  trackingId, 
-  data, 
+const StatusCard = ({
+  trackingId,
+  data,
   precioPaquete,
-  pagadoInicial = false, 
-  metodoPagoInicial = null, 
+  pagadoInicial = false,
+  metodoPagoInicial = null,
   referenciaBinanceInicial = null,
   pagoReportadoInicial = false
 }) => {
@@ -63,34 +63,57 @@ const StatusCard = ({
   const [pagoReportado, setPagoReportado] = useState(pagoReportadoInicial);
   const [metodoPagoGuardado, setMetodoPagoGuardado] = useState(metodoPagoInicial);
   const [referenciaBinanceGuardada, setReferenciaBinanceGuardada] = useState(referenciaBinanceInicial);
-  
+
   const [bsCalculados, setBsCalculados] = useState(null);
   const [consultandoTasa, setConsultandoTasa] = useState(false);
 
   const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState('pagomovil');
-  
+
   const [comprobante, setComprobante] = useState(null);
   const [comprobantePreview, setComprobantePreview] = useState(null);
-  
+
   const [referenciaBinance, setReferenciaBinance] = useState('');
-  
+
   const [enviando, setEnviando] = useState(false);
   const [mensajeSubida, setMensajeSubida] = useState('');
   const [mostrarOpcionesNotificacion, setMostrarOpcionesNotificacion] = useState(false);
   const [mensajeListo, setMensajeListo] = useState('');
   const [fotoUrlLista, setFotoUrlLista] = useState('');
 
-  const montoUSDLimpio = precioPaquete && precioPaquete !== 'Pendiente' 
-    ? parseFloat(String(precioPaquete).replace(/[^0-9.-]+/g, "")) 
+  const montoUSDLimpio = precioPaquete && precioPaquete !== 'Pendiente'
+    ? parseFloat(String(precioPaquete).replace(/[^0-9.-]+/g, ""))
     : 0;
 
-  if (!data || data.length === 0 || data[0].evento?.includes('Pendiente')) {
+  // 🔥 NUEVA VALIDACIÓN: Verificar si el paquete está pendiente de completar por el admin
+  const estaPendienteDeCompletar = () => {
+    // Si no hay datos o el primer evento es "Pendiente"
+    if (!data || data.length === 0 || data[0]?.evento?.includes('Pendiente')) {
+      return true;
+    }
+    
+    // Si el precio está en "Pendiente" (admin no ha completado)
+    if (precioPaquete === 'Pendiente') {
+      return true;
+    }
+    
+    // Si hay datos pero el peso es "Pendiente" (admin no ha completado)
+    const tienePesoPendiente = data.some(item => item.peso === 'Pendiente');
+    if (tienePesoPendiente) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // 🔥 Mostrar mensaje de espera si el paquete aún no ha sido completado por el admin
+  if (estaPendienteDeCompletar()) {
     return (
       <div className="status-card-container">
         <h2 className="main-tracking-id">{trackingId}</h2>
-        <div className="pending-message">
-          <p>Este paquete esta en camino a Miami</p>
-          <p>Cuando llegue a nuestra bodega, se actualizaran los datos</p>
+        <div className="pending-message prealerta-pending">
+          <div className="pending-icon">📦</div>
+          <p className="pending-title">Paquete registrado</p>
+          <p>En breve podrás ver toda la información de tu envío</p>
         </div>
       </div>
     );
@@ -127,7 +150,7 @@ const StatusCard = ({
 
   const getMensajeEstado = () => {
     const evento = ultimoEvento.evento || '';
-    
+
     if (pagado) {
       if (evento.includes('Llego a Envios Benjamin')) {
         return { mensaje: 'Listo! Puedes retirar tu paquete', clase: 'mensaje-exito' };
@@ -143,7 +166,7 @@ const StatusCard = ({
       }
       return { mensaje: 'Pago confirmado - Gracias por confiar en nosotros', clase: 'mensaje-confirmado' };
     }
-    
+
     if (evento.includes('Llego a Envios Benjamin')) {
       return { mensaje: 'Necesitas cancelar el envio para poder retirar', clase: 'mensaje-urgente' };
     }
@@ -190,7 +213,7 @@ const StatusCard = ({
 
   const enviarComprobante = async () => {
     setEnviando(true);
-    
+
     try {
       let mensajeTexto = '';
       let fotoUrl = '';
@@ -201,30 +224,30 @@ const StatusCard = ({
           setEnviando(false);
           return;
         }
-        
+
         const bolivaresUsados = bsCalculados ? bsCalculados.monto : "No calculado";
-        
+
         setMensajeSubida('Subiendo comprobante...');
-        
+
         fotoUrl = await ApiService.subirFoto(comprobante, trackingId, 'comprobante_pago');
-        
+
         await ApiService.reportarPago(trackingId, 'pagomovil');
-        
+
         setMensajeSubida('Comprobante subido correctamente');
-        
+
         mensajeTexto = `PAGO DE PAQUETE\n\nTracking: ${trackingId}\nMonto: Bs. ${bolivaresUsados} (USD ${montoUSDLimpio.toFixed(2)})\nMetodo: Pago Movil\nFecha: ${new Date().toLocaleString()}\n\nComprobante subido exitosamente.\nEnlace: ${fotoUrl}`;
-      
+
       } else if (metodoPagoSeleccionado === 'binance') {
         if (!referenciaBinance.trim()) {
           alert('Por favor, ingresa el ID de Orden de Binance');
           setEnviando(false);
           return;
         }
-        
+
         setMensajeSubida('Procesando pago Binance...');
-        
+
         await ApiService.reportarPago(trackingId, 'binance', referenciaBinance);
-        
+
         setMensajeSubida('Referencia procesada correctamente');
         mensajeTexto = `PAGO DE PAQUETE\n\nTracking: ${trackingId}\nMonto: $${montoUSDLimpio.toFixed(2)} USDT\nMetodo: Binance Pay\nOrder ID: ${referenciaBinance}\nFecha: ${new Date().toLocaleString()}`;
       }
@@ -235,7 +258,7 @@ const StatusCard = ({
       setMensajeSubida('Pago registrado. Elige como notificar:');
       setMostrarOpcionesNotificacion(true);
       setEnviando(false);
-      
+
       setTimeout(() => {
         if (metodoPagoSeleccionado === 'pagomovil') {
           setComprobante(null);
@@ -244,7 +267,7 @@ const StatusCard = ({
           setReferenciaBinance('');
         }
       }, 500);
-      
+
     } catch (error) {
       alert(error.message || 'Error al procesar el pago. Intenta de nuevo.');
       setMensajeSubida('');
@@ -255,15 +278,15 @@ const StatusCard = ({
   return (
     <div className="status-card-container">
       <h2 className="main-tracking-id">{trackingId}</h2>
-      
+
       <div className="details-grid">
         <h3 className="details-title">Detalles del pedido</h3>
-        
+
         <div className="detail-item">
           <span className="detail-label">Tracking</span>
           <span className="detail-value">{trackingId}</span>
         </div>
-        
+
         <div className="detail-item">
           <span className="detail-label">Peso</span>
           <span className="detail-value">{eventoConPeso.peso || 'Pendiente'}</span>
@@ -283,9 +306,9 @@ const StatusCard = ({
           <div className="detail-item bs-calc-container">
             <span className="detail-label">Total en Bolivares</span>
             {!bsCalculados ? (
-              <button 
-                className="btn-calcular-bcv" 
-                onClick={handleCalcularBs} 
+              <button
+                className="btn-calcular-bcv"
+                onClick={handleCalcularBs}
                 disabled={consultandoTasa}
               >
                 {consultandoTasa ? 'Consultando BCV...' : 'Ver pago en Bs (Tasa Euro)'}
@@ -295,7 +318,7 @@ const StatusCard = ({
                 <span className="bs-monto-grande">Bs. {bsCalculados.monto}</span>
                 <small className="bs-tasa-info">
                   Tasa Euro BCV: {bsCalculados.tasa.toFixed(2)}
-                  <br/>
+                  <br />
                   <span className="bs-updated-tag">Actualizada al instante</span>
                 </small>
                 <button className="btn-recalcular-mini" onClick={() => setBsCalculados(null)}>
@@ -342,13 +365,13 @@ const StatusCard = ({
         <div className="pago-section">
           <div className="datos-bancarios">
             <h4>Realizar Pago</h4>
-            
+
             {pagoReportado && (
               <div className="alerta-espera">
                 Ya reportaste un pago para este paquete. Espera a que el administrador lo confirme.
               </div>
             )}
-            
+
             {!pagoReportado && (
               <>
                 <div className="metodos-pago">
@@ -362,7 +385,7 @@ const StatusCard = ({
                     />
                     <span>Pago Movil</span>
                   </label>
-                  
+
                   <label className={`metodo-option ${metodoPagoSeleccionado === 'binance' ? 'active-binance' : ''}`}>
                     <input
                       type="radio"
@@ -412,11 +435,11 @@ const StatusCard = ({
                           className="comprobante-input"
                         />
                       </label>
-                      
+
                       {comprobantePreview && (
                         <div className="comprobante-preview">
                           <LazyImage src={comprobantePreview} alt="Comprobante" />
-                          <button 
+                          <button
                             className="btn-eliminar"
                             onClick={() => {
                               setComprobante(null);
@@ -437,7 +460,7 @@ const StatusCard = ({
                       <div className="info-line">
                         <strong>Pay ID:</strong>
                         <span className="pay-id-box">
-                          732006712 
+                          732006712
                           <button onClick={copiarPayId} className="btn-copiar-mini">Copiar</button>
                         </span>
                       </div>
@@ -475,18 +498,18 @@ const StatusCard = ({
                   </div>
                 )}
 
-                <button 
+                <button
                   onClick={enviarComprobante}
                   className={`whatsapp-btn ${metodoPagoSeleccionado === 'binance' ? 'btn-binance' : ''}`}
                   disabled={enviando || (metodoPagoSeleccionado === 'pagomovil' && !comprobante) || (metodoPagoSeleccionado === 'binance' && !referenciaBinance)}
                 >
-                  {enviando 
-                    ? 'Procesando...' 
+                  {enviando
+                    ? 'Procesando...'
                     : (metodoPagoSeleccionado === 'pagomovil' ? 'Subir comprobante y notificar por WhatsApp' : 'Notificar Pago por WhatsApp')}
                 </button>
               </>
             )}
-            
+
             <p className="nota-pago">
               <small>Al hacer clic: <br />1. Se registrara el pago en el sistema  <br />2. Podras elegir como notificar</small>
             </p>
@@ -499,9 +522,9 @@ const StatusCard = ({
           <div className="modal-opciones-card" onClick={e => e.stopPropagation()}>
             <h4>Notificar Pago</h4>
             <p>Tu pago ya esta registrado en el sistema. Elige como enviar la notificacion al administrador:</p>
-            
+
             <div className="opciones-botones">
-              <button 
+              <button
                 className="opcion-whatsapp"
                 onClick={() => {
                   const url = `https://wa.me/584125309882?text=${encodeURIComponent(mensajeListo)}`;
@@ -512,8 +535,8 @@ const StatusCard = ({
               >
                 Abrir WhatsApp
               </button>
-              
-              <button 
+
+              <button
                 className="opcion-copiar"
                 onClick={() => {
                   navigator.clipboard.writeText(mensajeListo);
@@ -525,12 +548,12 @@ const StatusCard = ({
                 Copiar mensaje
               </button>
             </div>
-            
+
             <p className="nota-opciones">
               <small>Si se fue la luz o WhatsApp no abre, copia el mensaje y pegalo despues en WhatsApp o Telegram.</small>
             </p>
-            
-            <button 
+
+            <button
               className="opcion-cerrar"
               onClick={() => {
                 setMostrarOpcionesNotificacion(false);
@@ -547,7 +570,7 @@ const StatusCard = ({
         <div className="pago-confirmado-section">
           <div className="pago-confirmado-detalle">
             <strong>Pago confirmado</strong>
-            
+
             {metodoPagoGuardado && (
               <div className="metodo-pago-usado">
                 <span className="metodo-icono">
@@ -563,7 +586,7 @@ const StatusCard = ({
                 </span>
               </div>
             )}
-            
+
             <p className="gracias-msg">Gracias por confiar en nosotros.</p>
           </div>
         </div>

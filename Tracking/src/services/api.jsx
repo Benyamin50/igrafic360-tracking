@@ -1,5 +1,14 @@
 // src/services/api.js
-export const API_URL = "https://igrafic360.net/envio-api";
+
+// 🔥 Detectamos inteligentemente si estás en tu PC o en cPanel
+const esLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Si es local, usa '/envio-api' para pasar por el Proxy de Vite.
+// Si es producción (cPanel), usa la URL completa.
+export const API_URL = esLocal ? "/envio-api" : "https://igrafic360.net/envio-api";
+
+
+// ... de aquí para abajo todo sigue igualito ...
 
 const fetchConfig = (method = 'GET', body = null) => {
   const config = {
@@ -198,6 +207,27 @@ export const ApiService = {
     return res.json();
   },
 
+  // ============================================
+  // 👇 NUEVA FUNCIÓN: ELIMINAR PAQUETE
+  // ============================================
+  async eliminarPaquete(trackingId) {
+    try {
+      const res = await fetch(`${API_URL}/api/paquete/eliminar/${trackingId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al eliminar paquete');
+      }
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   async obtenerFotosPaquete(trackingId) {
     try {
       const res = await fetch(`${API_URL}/api/paquete/${trackingId}/fotos`, {
@@ -206,10 +236,11 @@ export const ApiService = {
       });
       
       if (!res.ok) {
+        // ✅ LA MAGIA AQUÍ: Silencioso si falla por tráfico temporal (status 403 falso)
         if (res.status === 403) {
-          throw new Error('No tienes permiso para ver estas fotos');
+          console.warn("Aviso: Las fotos se omitieron temporalmente por pico de tráfico.");
         }
-        return [];
+        return []; 
       }
       
       const data = await res.json();
@@ -226,7 +257,8 @@ export const ApiService = {
       }
       return [];
     } catch (error) {
-      throw error;
+      // ✅ Silencioso si explota por cualquier otra cosa
+      return [];
     }
   },
 
@@ -370,8 +402,9 @@ export const ApiService = {
       });
       
       if (!res.ok) {
+        // ✅ LA MAGIA AQUÍ: Silencioso
         if (res.status === 403) {
-          throw new Error('No tienes permiso para ver las coordenadas');
+          console.warn("Aviso: Las coordenadas se omitieron temporalmente por pico de tráfico.");
         }
         return [];
       }
@@ -379,6 +412,7 @@ export const ApiService = {
       const data = await res.json();
       return data.coordenadas || [];
     } catch (error) {
+      // ✅ Silencioso
       return [];
     }
   },

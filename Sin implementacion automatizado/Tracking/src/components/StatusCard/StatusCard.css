@@ -1,0 +1,717 @@
+/* ============================================
+   STATUS CARD - DISEÑO PREMIUM & RESPONSIVE
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/* CONTENEDOR PRINCIPAL */
+.status-card-container {
+  background: transparent; 
+  padding: clamp(10px, 3vw, 20px);
+  text-align: left;
+  font-family: 'Poppins', sans-serif;
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* EL NÚMERO DE TRACKING (PROTAGONISTA) */
+.main-tracking-id {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1.8rem, 5vw, 2.4rem); /* Responsive fluid typography */
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 15px;
+  background: linear-gradient(to right, #FFFFFF, #A0AEC0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  word-break: break-all;
+}
+
+/* TÍTULO DE DETALLES */
+.details-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1rem, 3vw, 1.1rem);
+  color: #D4AF37;
+  margin-bottom: 20px;
+  margin-top: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* LA CUADRÍCULA DE DATOS */
+.details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap; /* Previene desbordamiento en móviles */
+  gap: 8px;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: #A0AEC0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  color: #E2E8F0;
+  font-weight: 500;
+  font-size: 0.95rem;
+  text-align: right;
+  word-break: break-word; /* Protege IDs largos */
+}
+
+.usd-highlight {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4ade80; 
+  background: rgba(74, 222, 128, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap; /* Evita que el precio se parta a la mitad */
+}
+
+/* BADGES (ETIQUETAS DE ESTADO) */
+.status-badge {
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #D4AF37;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
+  text-align: center;
+}
+
+/* ============================================ */
+/* LÓGICA DE BOLÍVARES EN VIVO */
+/* ============================================ */
+.bs-calc-container {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 12px;
+  padding: 15px !important;
+  border-left: 3px solid #D4AF37;
+  gap: 12px;
+}
+
+.btn-calcular-bcv {
+  width: 100%;
+  min-height: 44px; /* Touch friendly */
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.1) 100%);
+  border: 1px solid #D4AF37;
+  color: #D4AF37;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-calcular-bcv:hover:not(:disabled) {
+  background: #D4AF37;
+  color: #000;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.btn-calcular-bcv:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.bs-resultado-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bs-monto-grande {
+  font-size: clamp(1.2rem, 4vw, 1.4rem);
+  font-weight: 700;
+  color: #D4AF37;
+}
+
+.bs-tasa-info {
+  font-size: 0.75rem;
+  color: #A0AEC0;
+  line-height: 1.4;
+}
+
+.bs-updated-tag {
+  color: #4ade80;
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.btn-recalcular-mini {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #A0AEC0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-recalcular-mini:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ============================================ */
+/* ESTADO DE PAGO EN DETALLES */
+/* ============================================ */
+.estado-pago-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.estado-pago-badge.pagado { background: rgba(40, 167, 69, 0.15); color: #4ade80; border: 1px solid rgba(40, 167, 69, 0.3); }
+.estado-pago-badge.no-pagado { background: rgba(220, 53, 69, 0.15); color: #f87171; border: 1px solid rgba(220, 53, 69, 0.3); }
+.estado-pago-badge.reportado { background: rgba(255, 193, 7, 0.15); color: #fbbf24; border: 1px solid rgba(255, 193, 7, 0.3); }
+
+.estado-pago-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.metodo-pago-badge {
+  background: rgba(212, 175, 55, 0.15);
+  color: #D4AF37;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* MENSAJE DE PAQUETE PENDIENTE */
+.pending-message {
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: #E2E8F0;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pending-message p:first-child {
+  color: #D4AF37;
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+.pending-message p:last-child {
+  font-size: 0.9rem;
+  color: #A0AEC0;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+/* ============================================ */
+/* MENSAJES CONDICIONALES */
+/* ============================================ */
+.mensaje-estado {
+  padding: 15px;
+  border-radius: 10px;
+  margin: 20px 0;
+  font-weight: 600;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+}
+
+.mensaje-exito { background: rgba(40, 167, 69, 0.15); color: #4ade80; border-left: 4px solid #28a745; }
+.mensaje-confirmado { background: rgba(0, 123, 255, 0.1); color: #60a5fa; border-left: 4px solid #007bff; }
+.mensaje-advertencia { background: rgba(255, 193, 7, 0.1); color: #fbbf24; border-left: 4px solid #ffc107; }
+.mensaje-urgente { background: rgba(220, 53, 69, 0.1); color: #f87171; border-left: 4px solid #dc3545; }
+
+/* ============================================ */
+/* SECCIÓN DE PAGO */
+/* ============================================ */
+.pago-section {
+  background: rgba(10, 14, 23, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: clamp(15px, 4vw, 25px);
+  margin: 20px 0;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.datos-bancarios h4 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #D4AF37;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Alerta de espera */
+.alerta-espera {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #fbbf24;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Métodos de pago */
+.metodos-pago {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.metodo-option {
+  flex: 1;
+  min-width: 140px; /* Evita que se aplasten mucho */
+  min-height: 48px; /* Touch friendly */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(10, 14, 23, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.metodo-option.active {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: #D4AF37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.metodo-option input { display: none; }
+.metodo-option span { color: #E2E8F0; font-weight: 500; font-size: 0.95rem; }
+.metodo-option.active span { color: #D4AF37; }
+
+/* Información bancaria */
+.banco-info { margin-bottom: 20px; }
+
+.info-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.info-line strong { color: #A0AEC0; font-weight: 500; font-size: 0.9rem; }
+.info-line span { color: #E2E8F0; font-weight: 500; font-size: 0.95rem; }
+
+.info-line.destacado {
+  background: rgba(212, 175, 55, 0.1);
+  margin: 10px 0;
+  padding: 15px;
+  border-radius: 10px;
+  border-bottom: none;
+}
+
+.info-line.destacado .monto-destacado {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #D4AF37;
+}
+
+.btn-link-oro {
+  background: transparent;
+  border: none;
+  color: #D4AF37;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  padding: 5px; /* Aumenta area tactil */
+}
+
+/* Sección de comprobante */
+.comprobante-section { margin: 20px 0; }
+
+.comprobante-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px dashed rgba(212, 175, 55, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #D4AF37;
+  font-weight: 500;
+}
+
+.comprobante-label:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #D4AF37;
+}
+
+.comprobante-input { display: none; }
+
+.comprobante-preview {
+  margin-top: 15px;
+  text-align: center;
+  position: relative;
+}
+
+.comprobante-preview img {
+  max-width: 100%;
+  max-height: 250px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.btn-eliminar {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #dc3545;
+  color: white;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.btn-eliminar:active { transform: scale(0.9); }
+
+/* Mensaje de subida */
+.mensaje-subida {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 15px 0;
+  text-align: center;
+  color: #D4AF37;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Botón WhatsApp */
+.whatsapp-btn {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white;
+  padding: 14px 20px;
+  border-radius: 50px;
+  font-weight: bold;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+  text-align: center;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+  border: none;
+  cursor: pointer;
+}
+
+.whatsapp-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nota-pago {
+  text-align: center;
+  margin-top: 20px;
+  color: #A0AEC0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* ============================================ */
+/* CONFIRMACIÓN DE PAGO */
+/* ============================================ */
+.pago-confirmado-section {
+  background: rgba(40, 167, 69, 0.1);
+  border-radius: 16px;
+  padding: 25px;
+  margin: 25px 0;
+  text-align: center;
+  border: 1px solid rgba(40, 167, 69, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.pago-confirmado-detalle { color: #4ade80; }
+.pago-confirmado-detalle strong { font-size: 1.2rem; display: block; margin-bottom: 12px; color: #D4AF37; }
+
+.metodo-pago-usado {
+  margin-top: 15px;
+  background: rgba(0,0,0,0.3);
+  padding: 10px 15px;
+  border-radius: 10px;
+  display: inline-block;
+  font-size: 0.9rem;
+}
+
+.gracias-msg { font-size: 0.85rem; margin-top: 15px; color: #E2E8F0; }
+
+/* ============================================ */
+/* ESTILOS PARA BINANCE PAY 🟡 */
+/* ============================================ */
+.active-binance {
+  background-color: rgba(240, 185, 11, 0.2) !important;
+  color: #f0b90b !important;
+  border-color: #f0b90b !important;
+  font-weight: bold;
+}
+
+.active-binance span { color: #f0b90b !important; }
+
+.binance-box {
+  border-left: 4px solid #f0b90b !important;
+  background: rgba(240, 185, 11, 0.05) !important;
+  border-radius: 10px;
+  padding: 0 15px;
+}
+
+.binance-destacado { color: #f0b90b !important; }
+
+.btn-binance {
+  background: linear-gradient(135deg, #f0b90b 0%, #d6a40a 100%) !important;
+  color: #000 !important;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(240, 185, 11, 0.3) !important;
+}
+
+.btn-binance:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d6a40a 0%, #c4940a 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(240, 185, 11, 0.4) !important;
+}
+
+.pay-id-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-copiar-mini {
+  background: #2d3748;
+  color: white;
+  border: 1px solid #4a5568;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-copiar-mini:active { background: #f0b90b; color: black; border-color: #f0b90b; }
+
+.referencia-section {
+  margin-top: 20px;
+  background: rgba(11, 15, 25, 0.8);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px dashed #4a5568;
+}
+
+.input-referencia {
+  width: 100%;
+  height: 48px; /* Touch friendly */
+  padding: 12px 15px;
+  margin-top: 10px;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  background: #162032;
+  color: white;
+  font-size: 1rem; /* Previene autozoom en iOS */
+  transition: all 0.2s;
+  -webkit-appearance: none;
+}
+
+.input-referencia:focus {
+  outline: none;
+  border-color: #f0b90b;
+  box-shadow: 0 0 0 2px rgba(240, 185, 11, 0.2);
+}
+
+.nota-binance {
+  display: block;
+  font-size: 0.8rem;
+  color: #a0aec0;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ============================================ */
+/* MODAL DE OPCIONES PARA NOTIFICAR */
+/* ============================================ */
+.modal-opciones-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+  padding: 20px;
+}
+
+.modal-opciones-card {
+  background: #162032;
+  border-radius: 20px;
+  padding: clamp(20px, 5vw, 30px);
+  max-width: 450px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-opciones-card h4 {
+  color: #D4AF37;
+  font-family: 'Poppins', sans-serif;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.modal-opciones-card p {
+  color: #E2E8F0;
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.opciones-botones {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-direction: column; /* Apila botones en móvil por defecto */
+}
+
+.opcion-whatsapp, .opcion-copiar {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 20px;
+  border-radius: 50px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.opcion-whatsapp { background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none; }
+.opcion-whatsapp:active { transform: translateY(2px); }
+
+.opcion-copiar { background: rgba(212, 175, 55, 0.1); border: 1px solid #D4AF37; color: #D4AF37; }
+.opcion-copiar:active { background: #D4AF37; color: #0B0F19; }
+
+.opcion-cerrar {
+  background: transparent;
+  border: none;
+  color: #A0AEC0;
+  padding: 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 5px;
+  text-decoration: underline;
+}
+
+/* ============================================ */
+/* MEDIA QUERIES EXTREMAS */
+/* ============================================ */
+@media (min-width: 480px) {
+  .opciones-botones {
+    flex-direction: row; /* Botones lado a lado en pantallas más grandes */
+  }
+}
+
+@media (max-width: 480px) {
+  .info-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 0;
+  }
+  
+  .info-line span {
+    align-self: flex-start; /* Evita que el texto largo (ej. correo) se pegue a la etiqueta */
+    word-break: break-all;
+  }
+  
+  .estado-pago-info {
+    justify-content: flex-start;
+    margin-top: 5px;
+  }
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

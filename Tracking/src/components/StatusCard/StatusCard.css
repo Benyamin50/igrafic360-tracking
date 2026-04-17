@@ -715,3 +715,31 @@
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Estilos para mensaje de prealerta pendiente */
+.pending-message.prealerta-pending {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.pending-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.pending-title {
+  color: #D4AF37;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.pending-message.prealerta-pending p {
+  color: #A0AEC0;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0;
+}

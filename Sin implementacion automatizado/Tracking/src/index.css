@@ -1,0 +1,55 @@
+/* Importamos una fuente moderna y limpia - Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Paleta de colores estilo One Way Cargo */
+  --primary-blue: #1a3a5a;
+  --success-green: #22543d;
+  --bg-gray: #f7fafc;
+  --text-main: #2d3748;
+  --text-muted: #718096;
+  --border-color: #edf2f7;
+
+  background-color: var(--bg-gray);
+  color: var(--text-main);
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Scrollbar personalizada para que se vea más pro */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Evitamos que el zoom de los inputs moleste en iPhone */
+input {
+  font-size: 16px;
+}

@@ -6,7 +6,8 @@ import StatusCard from './components/StatusCard/StatusCard';
 import AdminPanel from './components/AdminPanel/AdminPanel';
 import Login from './components/Login/Login';
 import ClienteDashboard from './components/ClienteDashboard/ClienteDashboard';
-import DireccionesEnvio from './components/DireccionesEnvio/DireccionesEnvio'; 
+import DireccionesEnvio from './components/DireccionesEnvio/DireccionesEnvio';
+import Prealerta from './components/Prealerta/Prealerta';  // 🔥 NUEVO
 import { ApiService, API_URL } from './services/api';
 import './App.css';
 
@@ -28,7 +29,7 @@ function App() {
     referencia_binance: null,
     pago_reportado: false,
     precio: null,
-    fecha_pago: null  // 👈 AGREGAR
+    fecha_pago: null
   });
   
   const [dashboardKey, setDashboardKey] = useState(0);
@@ -76,7 +77,7 @@ function App() {
       referencia_binance: null, 
       pago_reportado: false, 
       precio: null,
-      fecha_pago: null  // 👈 AGREGAR
+      fecha_pago: null
     });
 
     try {
@@ -87,7 +88,6 @@ function App() {
       const data = await response.json();
       
       if (!response.ok) {
-        if (response.status === 403) throw new Error('No tienes permiso para ver este paquete');
         throw new Error(data.error || "Error en la busqueda");
       }
       
@@ -104,7 +104,7 @@ function App() {
           referencia_binance: pagoData.referencia_binance,
           pago_reportado: pagoData.pago_reportado === true || pagoData.pago_reportado === 1,
           precio: pagoData.precio,
-          fecha_pago: pagoData.fecha_pago  // 👈 AGREGAR
+          fecha_pago: pagoData.fecha_pago
         });
       }
       
@@ -153,7 +153,12 @@ function App() {
   };
 
   const renderContent = () => {
-    if (modo === 'cliente') return <ClienteDashboard key={dashboardKey} user={user} uid={uid} onLogout={handleLogout} />;
+    if (modo === 'cliente') return <ClienteDashboard key={dashboardKey} user={user} uid={uid} />;
+    
+    // 🔥 NUEVA SECCION PREALERTA
+    if (modo === 'prealerta') {
+      return <Prealerta uid={uid} onSuccess={() => setDashboardKey(prev => prev + 1)} />;
+    }
     
     if (modo === 'rastreo') {
       return (
@@ -187,7 +192,7 @@ function App() {
                       metodoPagoInicial={datosPagoPaquete.metodo_pago} 
                       referenciaBinanceInicial={datosPagoPaquete.referencia_binance} 
                       pagoReportadoInicial={datosPagoPaquete.pago_reportado}
-                      fechaPago={datosPagoPaquete.fecha_pago}  // 👈 AGREGAR
+                      fechaPago={datosPagoPaquete.fecha_pago}
                     />
                   </div>
                 </div>
@@ -222,7 +227,7 @@ function App() {
 
   const getMainClass = () => {
     if (modo === 'admin') return 'admin-main';
-    if (modo === 'direcciones' || modo === 'reporte' || modo === 'rastreo') return 'client-main';
+    if (modo === 'direcciones' || modo === 'reporte' || modo === 'rastreo' || modo === 'prealerta') return 'client-main';
     if (user) return 'client-main';
     return 'main-content';
   };
@@ -240,6 +245,7 @@ function App() {
             <button className={`nav-item ${modo === 'cliente' ? 'active' : ''}`} onClick={() => cambiarModo('cliente')}>Mis Paquetes</button>
             <button className={`nav-item ${modo === 'rastreo' ? 'active' : ''}`} onClick={() => cambiarModo('rastreo')}>Rastrear</button>
             <button className={`nav-item ${modo === 'direcciones' ? 'active' : ''}`} onClick={() => cambiarModo('direcciones')}>Direcciones</button>
+            <button className={`nav-item ${modo === 'prealerta' ? 'active' : ''}`} onClick={() => cambiarModo('prealerta')}>Prealerta</button>
             <button className={`nav-item ${modo === 'reporte' ? 'active' : ''}`} onClick={() => cambiarModo('reporte')}>Reportar paquete</button>
 
             {['admin', 'contador', 'empleado'].includes(userRol) && (
@@ -255,9 +261,34 @@ function App() {
             <div className="user-badge">
               <span className="user-avatar"></span>
               <div className="user-info-text">
-                <span className="user-name">{user.nombre}</span>
+                <span className="user-name">Hola, {user.nombre}</span>
                 <span className={`user-role ${userRol === 'admin' ? 'role-admin' : ''}`}>{userRol}</span>
               </div>
+              <button 
+                onClick={handleLogout} 
+                className="btn-logout-header"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #D4AF37',
+                  color: '#D4AF37',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginLeft: '15px',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#D4AF37';
+                  e.currentTarget.style.color = '#000';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#D4AF37';
+                }}
+              >
+                Cerrar Sesión
+              </button>
             </div>
           ) : (
             <span className="header-subtitle">Inicia sesion para continuar</span>

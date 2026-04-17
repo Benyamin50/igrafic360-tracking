@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// src/components/ClienteDashboard/ClienteDashboard.jsx
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { usePaquetes, useTracking } from '../../hooks/usePaquetes';
 import TrackingSearch from '../TrackingSearch/TrackingSearch';
 import TrackingTimeline from '../TrackingTimeline/TrackingTimeline';
 import StatusCard from '../StatusCard/StatusCard';
 import MapaRuta from '../MapaRuta/MapaRuta';
-import { ApiService, API_URL } from '../../services/api';
+import { ApiService } from '../../services/api';
 import './ClienteDashboard.css';
 
 const PAQUETES_POR_PAGINA = 20;
@@ -20,12 +22,6 @@ const estaEntregado = (paquete) => {
   return paquete.Entregado && paquete.Entregado !== '';
 };
 
-const getAuthHeaders = () => {
-  return {
-    'Content-Type': 'application/json',
-  };
-};
-
 let List, AutoSizer;
 try {
   const ReactWindow = require('react-window');
@@ -37,30 +33,38 @@ try {
   AutoSizer = null;
 }
 
-// 🔥 AQUÍ ESTÁ EL CAMBIO DE ALTURA A 100 PARA QUE NO SE CORTE 🔥
 const ITEM_HEIGHT = 100;
 
-const ClienteDashboard = ({ user, uid, onLogout }) => {
-  const [paquetes, setPaquetes] = useState([]);
-  const [loadingPaquetes, setLoadingPaquetes] = useState(false);
-  const [cargandoMas, setCargandoMas] = useState(false);
-  const [selectedPaquete, setSelectedPaquete] = useState(null);
-  const [trackingData, setTrackingData] = useState(null);
-  const [loadingTracking, setLoadingTracking] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const ClienteDashboard = ({ user, uid }) => {
+  // USANDO SWR - Carga con caché
+  const { 
+    paquetes, 
+    pagination, 
+    isLoading: loadingPaquetes, 
+    mutate: mutatePaquetes 
+  } = usePaquetes(uid, PAQUETES_POR_PAGINA);
   
-  const [pagination, setPagination] = useState({
-    has_more: true,
-    next_last_id: null,
-    total: 0,
-    loaded: 0
-  });
+  const [selectedPaquete, setSelectedPaquete] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  
+  // USANDO SWR PARA TRACKING
+  const { 
+    trackingData, 
+    isLoading: loadingTracking, 
+    mutate: mutateTracking 
+  } = useTracking(selectedPaquete);
   
   const scrollContainerRef = useRef(null);
   const [fotosMap, setFotosMap] = useState({});
   const [cargandoFotos, setCargandoFotos] = useState(false);
   const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
   const fotosCache = useRef({});
+
+  // Obtener el paquete seleccionado para su tipo_envio
+  const paqueteSeleccionado = useMemo(() => {
+    return paquetes.find(p => (p.tracking_id || p.id) === selectedPaquete);
+  }, [paquetes, selectedPaquete]);
 
   const tiposUbicacion = useMemo(() => [
     'Origen_paquete-recibido',
@@ -134,58 +138,6 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
     return estaReportado(paquete?.pago_reportado);
   }, [paquetes]);
 
-  const cargarPaquetes = useCallback(async (cargarMas = false, forzarRecarga = false) => {
-    if (forzarRecarga) {
-      setPagination({
-        has_more: true,
-        next_last_id: null,
-        total: 0,
-        loaded: 0
-      });
-      setPaquetes([]);
-      setLoadingPaquetes(true);
-      cargarMas = false;
-    }
-    
-    if (cargarMas && !pagination.has_more) return;
-    if (cargarMas && cargandoMas) return;
-    
-    if (cargarMas) {
-      setCargandoMas(true);
-    } else {
-      if (!forzarRecarga) {
-        setLoadingPaquetes(true);
-        setPaquetes([]);
-      }
-    }
-    
-    const lastId = forzarRecarga ? null : pagination.next_last_id;
-    
-    try {
-      const url = `${API_URL}/api/cliente/${uid}/paquetes?limit=${PAQUETES_POR_PAGINA}${lastId ? `&last_id=${lastId}` : ''}&_t=${Date.now()}`;
-      
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (cargarMas) {
-          setPaquetes(prev => [...prev, ...data.paquetes]);
-        } else {
-          setPaquetes(data.paquetes);
-        }
-        setPagination(data.pagination);
-      }
-    } catch (error) {
-      // Error silencioso
-    } finally {
-      setLoadingPaquetes(false);
-      setCargandoMas(false);
-    }
-  }, [uid, pagination.has_more, pagination.next_last_id, cargandoMas]);
-
   const cargarFotos = useCallback(async (trackingId) => {
     if (fotosCache.current[trackingId]) {
       setFotosMap(fotosCache.current[trackingId]);
@@ -204,44 +156,28 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
       fotosCache.current[trackingId] = mapa;
       setFotosMap(mapa);
     } catch (error) {
-      if (error.message === 'No tienes permiso para ver estas fotos') {
-        alert('No tienes permiso para ver las fotos de este paquete');
-      }
+      console.log('Error cargando fotos:', error.message);
     } finally {
       setCargandoFotos(false);
     }
   }, []);
 
-  const verTracking = useCallback(async (id) => {
-    setLoadingTracking(true);
-    setTrackingData(null);
+  const verTracking = useCallback((id) => {
     setSelectedPaquete(id);
-
-    try {
-      const response = await fetch(`${API_URL}/tracking/${id}?_t=${Date.now()}`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error('No tienes permiso para ver este paquete');
-        }
-        throw new Error(data.error || 'Error al cargar tracking');
-      }
-      setTrackingData(data);
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-      setSelectedPaquete(null);
-    } finally {
-      setLoadingTracking(false);
-    }
-  }, []);
+    cargarFotos(id);
+  }, [cargarFotos]);
 
   const obtenerPrecioPaquete = useCallback((trackingId) => {
     const paquete = paquetes.find(p => (p.tracking_id || p.id) === trackingId);
     return paquete?.precio || null;
   }, [paquetes]);
+
+  const cargarMasPaquetes = useCallback(() => {
+    if (pagination.has_more && !cargandoMas && !loadingPaquetes) {
+      setCargandoMas(true);
+      setCargandoMas(false);
+    }
+  }, [pagination.has_more, cargandoMas, loadingPaquetes]);
 
   const renderPaquetesLista = () => {
     const listaElementos = paquetes.map(p => {
@@ -285,7 +221,6 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
         const isReportado = estaReportado(p.pago_reportado);
         const isEntregadoPaquete = estaEntregado(p);
         
-        // Ajuste para React-Window: dejamos un pequeño margen interior virtual
         const rowStyle = {
           ...style,
           height: `${parseFloat(style.height) - 10}px`,
@@ -324,9 +259,7 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
         if (!scrollContainerRef.current) return;
         const { scrollHeight, clientHeight } = scrollContainerRef.current;
         if (scrollHeight - scrollOffset - clientHeight < 200) {
-          if (pagination.has_more && !cargandoMas && !loadingPaquetes) {
-            cargarPaquetes(true);
-          }
+          cargarMasPaquetes();
         }
       };
       
@@ -390,50 +323,8 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
     );
   };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollContainerRef.current) return;
-      
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-      if (scrollHeight - scrollTop - clientHeight < 200) {
-        if (pagination.has_more && !cargandoMas && !loadingPaquetes) {
-          cargarPaquetes(true);
-        }
-      }
-    };
-    
-    const scrollElement = scrollContainerRef.current;
-    if (scrollElement && (!List || paquetes.length <= 30)) {
-      scrollElement.addEventListener('scroll', handleScroll);
-      return () => scrollElement.removeEventListener('scroll', handleScroll);
-    }
-  }, [pagination.has_more, cargandoMas, loadingPaquetes, cargarPaquetes, List, paquetes.length]);
-
-  useEffect(() => {
-    cargarPaquetes(false, true);
-  }, [uid]);
-
-  useEffect(() => {
-    if (selectedPaquete) {
-      cargarFotos(selectedPaquete);
-    }
-  }, [selectedPaquete, cargarFotos]);
-
   return (
     <div className="client-dashboard">
-      <header className="client-header">
-        <div className="client-header-left">
-          <div className="client-welcome">
-            <h2>Hola, {user?.nombre || 'Cliente'}</h2>
-          </div>
-        </div>
-        <div className="client-header-right">
-          <button onClick={onLogout} className="client-logout-btn">
-            Cerrar Sesion
-          </button>
-        </div>
-      </header>
-
       <div className="client-container">
         <aside className={`client-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="client-stats">
@@ -520,6 +411,7 @@ const ClienteDashboard = ({ user, uid, onLogout }) => {
                     <MapaRuta 
                       trackingId={selectedPaquete}
                       ubicaciones={ubicaciones}
+                      tipoEnvio={paqueteSeleccionado?.tipo_envio}
                     />
                   </div>
                 </>

@@ -32,6 +32,13 @@ class _UpdateScreenState extends State<UpdateScreen> {
   bool _pagado = false;
   String? _estadoPago;
   String? _clienteNombre;
+  String? _tipoEnvio;
+  
+  // Variables para prealerta
+  bool _esPrealerta = false;
+  String? _descripcionCliente;
+  String? _trackingOriginal;
+  String? _tipoEnvioPrealerta;
 
   Map<String, dynamic>? _usuario;
 
@@ -43,33 +50,65 @@ class _UpdateScreenState extends State<UpdateScreen> {
   final Color textLight = const Color(0xFFE2E8F0);
   final Color textMuted = const Color(0xFFA0AEC0);
 
-  final List<Map<String, dynamic>> ubicaciones = [
-    {
-      "columna": "Ubicacion_1",
-      "label": "Saliendo de Miami",
-      "icon": Icons.directions_boat,
-    },
-    {
-      "columna": "Ubicacion_2",
-      "label": "En aduana venezolana",
-      "icon": Icons.local_shipping,
-    },
-    {
-      "columna": "Ubicacion_3",
-      "label": "En ruta a sucursal",
-      "icon": Icons.location_city,
-    },
-    {
-      "columna": "Llegada_Sucursal",
-      "label": "Llego a Envios Benjamin",
-      "icon": Icons.store,
-    },
-    {
-      "columna": "Entregado",
-      "label": "Entregado al cliente",
-      "icon": Icons.check_circle,
-    },
-  ];
+  List<Map<String, dynamic>> get ubicaciones {
+    if (_tipoEnvio == 'aereo') {
+      return [
+        {
+          "columna": "Ubicacion_1",
+          "label": "En vuelo hacia Venezuela",
+          "icon": Icons.flight,
+        },
+        {
+          "columna": "Ubicacion_2",
+          "label": "Arribo a Maiquetía (CCS)",
+          "icon": Icons.local_airport,
+        },
+        {
+          "columna": "Ubicacion_3",
+          "label": "En ruta a sucursal",
+          "icon": Icons.directions_car,
+        },
+        {
+          "columna": "Llegada_Sucursal",
+          "label": "Llego a Envios Benjamin",
+          "icon": Icons.store,
+        },
+        {
+          "columna": "Entregado",
+          "label": "Entregado al cliente",
+          "icon": Icons.check_circle,
+        },
+      ];
+    } else {
+      return [
+        {
+          "columna": "Ubicacion_1",
+          "label": "Saliendo de Miami",
+          "icon": Icons.directions_boat,
+        },
+        {
+          "columna": "Ubicacion_2",
+          "label": "Transbordo en Colon (Panama)",
+          "icon": Icons.directions_boat,
+        },
+        {
+          "columna": "Ubicacion_3",
+          "label": "Arribo a Puerto Cabello",
+          "icon": Icons.directions_boat,
+        },
+        {
+          "columna": "Llegada_Sucursal",
+          "label": "Llego a Envios Benjamin",
+          "icon": Icons.store,
+        },
+        {
+          "columna": "Entregado",
+          "label": "Entregado al cliente",
+          "icon": Icons.check_circle,
+        },
+      ];
+    }
+  }
 
   @override
   void initState() {
@@ -80,6 +119,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
   @override
   void dispose() {
     qrController?.dispose();
+    _trackingController.dispose();
     super.dispose();
   }
 
@@ -168,7 +208,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
     });
   }
 
-  Future<void> _consultarEstadoActual(String trackingId) async {
+  Future<void> _consultarEstadoNormal(String trackingId) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -178,6 +218,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
       _pagado = false;
       _estadoPago = null;
       _clienteNombre = null;
+      _tipoEnvio = null;
+      _esPrealerta = false;
     });
 
     try {
@@ -187,6 +229,23 @@ class _UpdateScreenState extends State<UpdateScreen> {
       _pagado = estadoCompleto['pagado'] ?? false;
       _estadoPago = estadoCompleto['estado_pago'];
       _clienteNombre = estadoCompleto['cliente_nombre'];
+      
+      // Intentar obtener el tipo de envío de la base de datos primero
+      _tipoEnvio = estadoCompleto['tipo_envio'];
+      
+      // Si no viene el tipo_envio, lo inferimos de las observaciones
+      if (_tipoEnvio == null || _tipoEnvio!.isEmpty) {
+        final observaciones = estadoCompleto['observaciones'] ?? '';
+        if (observaciones.toLowerCase().contains('aereo')) {
+          _tipoEnvio = 'aereo';
+        } else if (observaciones.toLowerCase().contains('maritimo')) {
+          _tipoEnvio = 'maritimo';
+        } else {
+          _tipoEnvio = 'maritimo'; // Por defecto
+        }
+      }
+      
+      print('Tipo de envio detectado: $_tipoEnvio');
 
       setState(() {
         _estadoActual = estado;
@@ -213,14 +272,16 @@ class _UpdateScreenState extends State<UpdateScreen> {
         return;
       }
 
+      final ubicacionesActuales = ubicaciones;
+      
       if (estado['Ubicacion_1'].isEmpty) {
-        _seleccionarUbicacion("Ubicacion_1", "Saliendo de Miami");
+        _seleccionarUbicacion(ubicacionesActuales[0]['columna'], ubicacionesActuales[0]['label']);
       } else if (estado['Ubicacion_2'].isEmpty) {
-        _seleccionarUbicacion("Ubicacion_2", "En aduana venezolana");
+        _seleccionarUbicacion(ubicacionesActuales[1]['columna'], ubicacionesActuales[1]['label']);
       } else if (estado['Ubicacion_3'].isEmpty) {
-        _seleccionarUbicacion("Ubicacion_3", "En ruta a sucursal");
+        _seleccionarUbicacion(ubicacionesActuales[2]['columna'], ubicacionesActuales[2]['label']);
       } else if (estado['Llegada_Sucursal'].isEmpty) {
-        _seleccionarUbicacion("Llegada_Sucursal", "Llego a Envios Benjamin");
+        _seleccionarUbicacion(ubicacionesActuales[3]['columna'], ubicacionesActuales[3]['label']);
       } else if (estado['Entregado'].isEmpty) {
         if (!_pagado) {
           setState(() {
@@ -229,7 +290,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
             _selectedUbicacion = null;
           });
         } else {
-          _seleccionarUbicacion("Entregado", "Entregado al cliente");
+          _seleccionarUbicacion(ubicacionesActuales[4]['columna'], ubicacionesActuales[4]['label']);
         }
       }
     } catch (e) {
@@ -243,14 +304,94 @@ class _UpdateScreenState extends State<UpdateScreen> {
     }
   }
 
+  Future<void> _consultarEstadoActual(String trackingId) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _historial = [];
+      _selectedUbicacion = null;
+      _ultimaFotoUrl = null;
+      _pagado = false;
+      _estadoPago = null;
+      _clienteNombre = null;
+      _tipoEnvio = null;
+      _esPrealerta = false;
+      _descripcionCliente = null;
+      _trackingOriginal = null;
+    });
+
+    try {
+      // Buscar si existe una prealerta con este tracking
+      final prealerta = await ApiService.buscarPrealerta(trackingId);
+      
+      if (prealerta != null && prealerta['found'] == true) {
+        // ES UNA PREALERTA - Confirmación rápida (Sin pedir peso)
+        _esPrealerta = true;
+        _descripcionCliente = prealerta['descripcion'];
+        _trackingOriginal = trackingId;
+        _tipoEnvioPrealerta = prealerta['tipo_envio'];
+        _clienteNombre = prealerta['cliente_nombre'];
+        
+        print('PREALERTA ENCONTRADA: $_trackingOriginal. Procesando automático...');
+        
+        // Llamamos directamente a la confirmación
+        await _confirmarPrealertaRapida();
+      } else {
+        // NO ES PREALERTA - Flujo normal
+        print('No se encontro prealerta para tracking: $trackingId');
+        await _consultarEstadoNormal(trackingId);
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Error al consultar: ${e.toString()}";
+        _isLoading = false;
+      });
+    }
+  }
+
+  // NUEVA FUNCIÓN: Confirma la prealerta enviando valores "Pendiente"
+  Future<void> _confirmarPrealertaRapida() async {
+    try {
+      // Mandamos 'Pendiente' para que la BD lo guarde así y luego en la Web se actualice
+      final resultado = await ApiService.crearPaqueteDesdePrealerta(
+        trackingOriginal: _trackingOriginal!,
+        peso: 'Pendiente', 
+        precio: 'Pendiente',
+      );
+      
+      if (resultado != null) {
+        final nuevoTrackingId = resultado['tracking_id'];
+        print('Paquete creado desde prealerta: $nuevoTrackingId');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Prealerta recibida con éxito: $nuevoTrackingId'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        
+        // Consultamos el nuevo paquete recién creado para mostrar su historial en pantalla
+        await _consultarEstadoNormal(nuevoTrackingId);
+      } else {
+        throw Exception('Error al registrar la prealerta en el servidor');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Error procesando prealerta: $e";
+        _isLoading = false;
+      });
+    }
+  }
+
   List<Map<String, dynamic>> _convertirEstadoAHistorial(
     Map<String, dynamic> estado,
   ) {
     List<Map<String, dynamic>> historial = [];
 
-    if (estado['Origen_paquete-recibido'].isNotEmpty) {
+    if (estado['Origen_paquete_recibido'].isNotEmpty) {
       historial.add({
-        'evento': estado['Origen_paquete-recibido'],
+        'evento': estado['Origen_paquete_recibido'],
         'fecha': estado['Fecha_Origen'],
         'icon': Icons.inbox,
         'color': textMuted,
@@ -260,7 +401,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
       historial.add({
         'evento': estado['Ubicacion_1'],
         'fecha': estado['Fecha_1'],
-        'icon': Icons.directions_boat,
+        'icon': Icons.flight,
         'color': textMuted,
       });
     }
@@ -268,7 +409,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
       historial.add({
         'evento': estado['Ubicacion_2'],
         'fecha': estado['Fecha_2'],
-        'icon': Icons.local_shipping,
+        'icon': Icons.local_airport,
         'color': textMuted,
       });
     }
@@ -276,7 +417,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
       historial.add({
         'evento': estado['Ubicacion_3'],
         'fecha': estado['Fecha_3'],
-        'icon': Icons.location_city,
+        'icon': Icons.directions_car,
         'color': textMuted,
       });
     }
@@ -401,9 +542,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
       );
     } catch (e) {
       print('Error: $e');
-    } finally {
       setState(() => _isLoading = false);
-    }
+    } 
   }
 
   Future<void> _procesarFoto(
@@ -425,6 +565,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
       if (image == null) {
         print('Usuario cancelo');
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -446,7 +587,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
       bool actualizado = false;
 
-      final coords = Coordenadas.getCoordenadas(columna);
+      final coords = Coordenadas.getCoordenadas(_tipoEnvio ?? 'maritimo', columna);
 
       if (coords != null) {
         print(
@@ -583,6 +724,19 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ubicacionesActuales = ubicaciones;
+    String? currentLabel;
+    IconData? currentIcon;
+    
+    if (_selectedUbicacion != null) {
+      final ubicacionActual = ubicacionesActuales.firstWhere(
+        (u) => u['columna'] == _selectedUbicacion,
+        orElse: () => {"label": "Actualizar", "icon": Icons.help},
+      );
+      currentLabel = ubicacionActual['label'];
+      currentIcon = ubicacionActual['icon'];
+    }
+
     return Scaffold(
       backgroundColor: midnightBlue,
       appBar: AppBar(
@@ -606,7 +760,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
                   child: Text(
                     'Empleado: ${_usuario!['nombre']}',
                     style: TextStyle(
-                      color: goldChampagne.withValues(alpha: 0.7),
+                      color: goldChampagne.withOpacity(0.7),
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
@@ -677,20 +831,65 @@ class _UpdateScreenState extends State<UpdateScreen> {
                       readOnly: true,
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      'Escanea el QR para ver el historial y siguiente paso',
-                      style: TextStyle(
-                        color: textMuted.withOpacity(0.7),
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+                    if (_tipoEnvio != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: goldChampagne.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: goldChampagne.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          'Tipo: ${_tipoEnvio == 'aereo' ? "AEREO" : "MARITIMO"}',
+                          style: TextStyle(
+                            color: goldChampagne,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
 
             const SizedBox(height: 20),
+
+            // Mostrar informacion de prealerta si aplica
+            if (_esPrealerta && _descripcionCliente != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: goldChampagne.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: goldChampagne.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PREALERTA - Datos del cliente',
+                      style: TextStyle(color: goldChampagne, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_clienteNombre != null)
+                      Text(
+                        'Cliente: $_clienteNombre',
+                        style: TextStyle(color: textLight, fontSize: 12),
+                      ),
+                    if (_trackingOriginal != null)
+                      Text(
+                        'Tracking original: $_trackingOriginal',
+                        style: TextStyle(color: textLight, fontSize: 12),
+                      ),
+                    Text(
+                      'Descripcion: $_descripcionCliente',
+                      style: TextStyle(color: textLight, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
 
             if (_selectedUbicacion == 'Entregado' && !_pagado)
               Container(
@@ -821,7 +1020,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 ),
               ),
 
-            if (_selectedUbicacion != null)
+            if (_selectedUbicacion != null && currentLabel != null)
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 16),
                 padding: const EdgeInsets.all(20),
@@ -849,20 +1048,14 @@ class _UpdateScreenState extends State<UpdateScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          ubicaciones.firstWhere(
-                            (u) => u['columna'] == _selectedUbicacion,
-                            orElse: () => {"icon": Icons.help},
-                          )['icon'],
+                          currentIcon ?? Icons.help,
                           size: 35,
                           color: goldChampagne,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            ubicaciones.firstWhere(
-                              (u) => u['columna'] == _selectedUbicacion,
-                              orElse: () => {"label": "Actualizar"},
-                            )['label'],
+                            currentLabel,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -936,50 +1129,47 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 borderRadius: BorderRadius.circular(10),
                 gradient:
                     (_isLoading ||
-                        _selectedUbicacion == null ||
-                        _trackingController.text.isEmpty ||
-                        (_selectedUbicacion == 'Entregado' && !_pagado))
-                    ? null
-                    : LinearGradient(
-                        colors: [goldChampagne, Color(0xFFAA7C11)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                            _selectedUbicacion == null ||
+                            _trackingController.text.isEmpty ||
+                            (_selectedUbicacion == 'Entregado' && !_pagado))
+                        ? null
+                        : LinearGradient(
+                            colors: [goldChampagne, const Color(0xFFAA7C11)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                 color:
                     (_isLoading ||
-                        _selectedUbicacion == null ||
-                        _trackingController.text.isEmpty ||
-                        (_selectedUbicacion == 'Entregado' && !_pagado))
-                    ? Colors.white.withOpacity(0.05)
-                    : null,
+                            _selectedUbicacion == null ||
+                            _trackingController.text.isEmpty ||
+                            (_selectedUbicacion == 'Entregado' && !_pagado))
+                        ? Colors.white.withOpacity(0.05)
+                        : null,
                 boxShadow:
                     (_isLoading ||
-                        _selectedUbicacion == null ||
-                        _trackingController.text.isEmpty ||
-                        (_selectedUbicacion == 'Entregado' && !_pagado))
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: goldChampagne.withOpacity(0.3),
-                          blurRadius: 15,
-                        ),
-                      ],
+                            _selectedUbicacion == null ||
+                            _trackingController.text.isEmpty ||
+                            (_selectedUbicacion == 'Entregado' && !_pagado))
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: goldChampagne.withOpacity(0.3),
+                              blurRadius: 15,
+                            ),
+                          ],
               ),
               child: ElevatedButton(
                 onPressed:
                     (_isLoading ||
-                        _selectedUbicacion == null ||
-                        _trackingController.text.isEmpty ||
-                        (_selectedUbicacion == 'Entregado' && !_pagado))
-                    ? null
-                    : () => _actualizarConFoto(
-                        _trackingController.text,
-                        _selectedUbicacion!,
-                        ubicaciones.firstWhere(
-                          (u) => u['columna'] == _selectedUbicacion,
-                          orElse: () => {"label": "Actualizar"},
-                        )['label'],
-                      ),
+                            _selectedUbicacion == null ||
+                            _trackingController.text.isEmpty ||
+                            (_selectedUbicacion == 'Entregado' && !_pagado))
+                        ? null
+                        : () => _actualizarConFoto(
+                            _trackingController.text,
+                            _selectedUbicacion!,
+                            currentLabel ?? 'Actualizar',
+                          ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
@@ -1023,12 +1213,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
                           fontWeight: FontWeight.bold,
                           color:
                               (_isLoading ||
-                                  _selectedUbicacion == null ||
-                                  _trackingController.text.isEmpty ||
-                                  (_selectedUbicacion == 'Entregado' &&
-                                      !_pagado))
-                              ? textMuted
-                              : midnightBlue,
+                                      _selectedUbicacion == null ||
+                                      _trackingController.text.isEmpty ||
+                                      (_selectedUbicacion == 'Entregado' &&
+                                          !_pagado))
+                                  ? textMuted
+                                  : midnightBlue,
                           letterSpacing: 1,
                         ),
                       ),

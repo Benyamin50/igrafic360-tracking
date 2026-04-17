@@ -1,7 +1,8 @@
 // src/components/AdminPanel/AdminPanel.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ApiService } from '../../services/api';
+import { ApiService, API_URL } from '../../services/api';
+import { usePaquetesAdmin } from '../../hooks/usePaquetesAdmin';
 import './AdminPanel.css';
 
 import EstadisticasPanel from './EstadisticasPanel/EstadisticasPanel';
@@ -17,9 +18,6 @@ import ModalEditarPaquete from './Modales/ModalEditarPaquete';
 import ModalQR from './Modales/ModalQR';
 import ModalAsignarCliente from './Modales/ModalAsignarCliente'; 
 import TablaSinIdentificar from './Tablas/TablaSinIdentificar'; 
-
-const API_URL = "https://igrafic360.net/envio-api";
-const PAQUETES_POR_PAGINA = 50;
 
 const getAuthHeaders = () => {
   return {
@@ -49,10 +47,17 @@ const esFantasma = (valor) => {
 };
 
 const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', permisos = [] }) => {
-  const [paquetes, setPaquetes] = useState([]);
+  // 🔥 USANDO SWR - Carga con caché e infinite scroll
+  const { 
+    paquetes, 
+    isLoading: cargando, 
+    hasMore, 
+    loadMore, 
+    mutate: mutatePaquetes 
+  } = usePaquetesAdmin(50);
+  
   const [mostrarQR, setMostrarQR] = useState(null);
   const [qrGenerado, setQrGenerado] = useState(null);
-  const [cargando, setCargando] = useState(false);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
@@ -68,11 +73,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const [paqueteAsignar, setPaqueteAsignar] = useState(null);
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
 
-  const [pagination, setPagination] = useState({
-    has_more: true,
-    next_last_id: null,
-    loaded: 0
-  });
   const [primeraCarga, setPrimeraCarga] = useState(true);
   const scrollContainerRef = useRef(null);
 
@@ -83,127 +83,12 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
 
   const [totalEmpleados, setTotalEmpleados] = useState(0);
 
-  // LOGICA DE MENU BASADA EN ROL
-  const getMenuItems = () => {
-    // Super Admin ve todo
-    if (esSuperAdmin) {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
-        { id: 'empleados', label: 'Empleados', icon: '👥' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    // Admin: todo EXCEPTO empleados (pero SÍ ve rendimiento)
-    if (userRol === 'admin') {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    // Contador: NO ve rendimiento, NO ve empleados
-    if (userRol === 'contador') {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    // Empleado: NO ve estadisticas, NO ve rendimiento, NO ve empleados
-    if (userRol === 'empleado') {
-      return [
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    return [];
-  };
-
-  const menuItems = getMenuItems();
-  const [pestanaActiva, setPestanaActiva] = useState(menuItems.length > 0 ? menuItems[0].id : '');
-
+  // Calcular estadisticas cuando cambian los paquetes
   useEffect(() => {
-    if (menuItems.length > 0) {
-      const tieneAcceso = menuItems.some(item => item.id === pestanaActiva);
-      if (!tieneAcceso) {
-        setPestanaActiva(menuItems[0].id);
-      }
+    if (paquetes.length > 0) {
+      calcularEstadisticas(paquetes);
     }
-  }, [userRol, esSuperAdmin, pestanaActiva, menuItems]);
-
-  const cargarPaquetes = useCallback(async (cargarMas = false, forzarFresco = false, reset = false) => {
-    if (cargarMas && !pagination.has_more) return;
-    if (cargarMas && cargandoMas) return;
-    if (!cargarMas && cargando && !primeraCarga) return;
-
-    if (cargarMas) {
-      setCargandoMas(true);
-    } else {
-      setCargando(true);
-    }
-
-    try {
-      const lastIdParam = reset ? null : pagination.next_last_id;
-      const url = `${API_URL}/paquetes?limit=${PAQUETES_POR_PAGINA}${lastIdParam ? `&last_id=${lastIdParam}` : ''}&_t=${Date.now()}`;
-      
-      const response = await fetch(url, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        let nuevosPaquetes;
-        if (cargarMas && !reset) {
-          nuevosPaquetes = [...paquetes, ...data.paquetes];
-          setPaquetes(nuevosPaquetes);
-        } else {
-          nuevosPaquetes = data.paquetes;
-          setPaquetes(data.paquetes);
-        }
-        
-        setPagination(data.pagination);
-        calcularEstadisticas(nuevosPaquetes);
-      } else if (response.status === 403) {
-        setError('No tienes permiso para ver los paquetes.');
-      } else if (response.status === 429) {
-        setError('Demasiadas peticiones. Espera un momento.');
-      } else if (response.status === 401) {
-        setError('Usuario no autenticado. Por favor, inicia sesion nuevamente.');
-      } else {
-        setError(data.error || 'Error al cargar paquetes');
-      }
-    } catch (error) {
-      setError('Error al cargar paquetes: ' + error.message);
-    } finally {
-      setCargando(false);
-      setCargandoMas(false);
-      setPrimeraCarga(false);
-    }
-  }, [pagination.has_more, pagination.next_last_id, paquetes, cargando, cargandoMas, primeraCarga]);
+  }, [paquetes]);
 
   const calcularEstadisticas = (paquetesArray) => {
     const sinIdentificar = paquetesArray.filter(p => esFantasma(p.es_fantasma)).length;
@@ -244,12 +129,17 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     });
   };
 
+  // Manejar scroll para cargar mas
   useEffect(() => {
     const handleScroll = () => {
       if (!scrollContainerRef.current) return;
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
       if (scrollHeight - scrollTop - clientHeight < 200) {
-        if (pagination.has_more && !cargandoMas && !cargando) cargarPaquetes(true);
+        if (hasMore && !cargandoMas && !cargando) {
+          setCargandoMas(true);
+          loadMore();
+          setCargandoMas(false);
+        }
       }
     };
     const scrollElement = scrollContainerRef.current;
@@ -257,7 +147,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
       scrollElement.addEventListener('scroll', handleScroll);
       return () => scrollElement.removeEventListener('scroll', handleScroll);
     }
-  }, [pagination.has_more, cargandoMas, cargando, cargarPaquetes]);
+  }, [hasMore, cargandoMas, cargando, loadMore]);
 
   useEffect(() => {
     const verificarSesion = async () => {
@@ -291,7 +181,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
             }
           }
           
-          cargarPaquetes(false, true);
+          setPrimeraCarga(false);
         } else {
           setError('No hay sesion activa. Por favor, inicia sesion.');
         }
@@ -305,75 +195,108 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     verificarSesion();
   }, []);
 
+  // Funcion para refrescar datos despues de acciones
+  const refrescarDatos = useCallback(async () => {
+    await mutatePaquetes();
+  }, [mutatePaquetes]);
+
   const marcarComoPagado = async (paquete) => { 
     if (!window.confirm(`Aprobar el pago del paquete ${paquete.tracking_id || paquete.id}?`)) return;
-    setCargando(true);
     try {
       const idActual = paquete.tracking_id || paquete.id;
       await ApiService.marcarPaquetePagado(idActual, true);
       setMensajeExito(`Pago APROBADO para el paquete ${idActual}`);
-      await cargarPaquetes(false, true, true); 
+      await refrescarDatos();
     } catch (error) { 
       setError(error.message); 
-      setCargando(false);
     }
   };
 
   const marcarComoRechazado = async (paquete) => { 
     if (!window.confirm(`RECHAZAR el pago del paquete ${paquete.tracking_id || paquete.id}? El cliente tendra que reportarlo de nuevo.`)) return;
-    setCargando(true);
     try {
       const idActual = paquete.tracking_id || paquete.id;
       await ApiService.marcarPaquetePagado(idActual, false);
       setMensajeExito(`Pago RECHAZADO para el paquete ${idActual}`);
-      await cargarPaquetes(false, true, true);
+      await refrescarDatos();
     } catch (error) { 
       setError(error.message); 
-      setCargando(false);
     }
   };
 
   const marcarComoNoPagado = async (paquete) => { 
     if (!window.confirm(`Devolver el paquete ${paquete.tracking_id || paquete.id} a estado pendiente de pago?`)) return;
-    setCargando(true);
     try {
       const idActual = paquete.tracking_id || paquete.id;
       await ApiService.marcarPaquetePagado(idActual, false);
       setMensajeExito(`Paquete ${idActual} devuelto a pendiente de pago`);
-      await cargarPaquetes(false, true, true);
+      await refrescarDatos();
     } catch (error) { 
       setError(error.message); 
-      setCargando(false);
     }
   };
 
+  const handleEliminarPaquete = async (paquete) => {
+    const idActual = paquete.tracking_id || paquete.id;
+    const mensajeConfirmacion = `¿Estas seguro de eliminar el paquete ${idActual}?\n\n` +
+      `⚠️ Esta accion NO se puede deshacer.\n\n` +
+      `El paquete se eliminara permanentemente del sistema.`;
+    
+    if (!window.confirm(mensajeConfirmacion)) return;
+    
+    try {
+      await ApiService.eliminarPaquete(idActual);
+      setMensajeExito(`Paquete ${idActual} eliminado correctamente`);
+      await refrescarDatos();
+    } catch (error) { 
+      setError(error.message); 
+    }
+  };
+
+  // 🔥 FUNCIÓN CORREGIDA - AHORA INCLUYE tipoEnvio
   const handleGuardarDatosCompletos = async (datosCompletos) => {
     if (!paqueteAEditar) return;
-    setCargando(true);
+    
+    console.log("📦 DATOS COMPLETOS RECIBIDOS:", datosCompletos);
+    
     try {
       const idActual = paqueteAEditar.tracking_id || paqueteAEditar.id;
+      
+      const payload = {
+        id: idActual,
+        peso: datosCompletos.peso || 'Pendiente',
+        precio: datosCompletos.precio || 'Pendiente',
+        origen: datosCompletos.origen || 'Miami',
+        observaciones: datosCompletos.observaciones || '',
+        tipoEnvio: datosCompletos.tipoEnvio  // 🔥 AGREGADO - Guardar tipo de envío
+      };
+      
+      console.log("📦 Enviando al backend:", payload);
+      
       const response = await fetch(`${API_URL}/actualizar-datos`, {
         method: 'POST',
         credentials: 'include',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ id: idActual, peso: datosCompletos.peso || 'Pendiente', precio: datosCompletos.precio || 'Pendiente', origen: datosCompletos.origen || 'Miami', observaciones: datosCompletos.observaciones || '' })
+        body: JSON.stringify(payload)
       });
+      
       if (response.ok) {
         setMensajeExito(`Datos de ${idActual} actualizados correctamente`);
-        setEditando(false); 
+        setEditando(false);
         setPaqueteAEditar(null);
-        await cargarPaquetes(false, true, true);
+        await refrescarDatos();
       } else if (response.status === 403) {
         throw new Error('No tienes permiso para editar paquetes');
-      } else throw new Error('Error al actualizar');
-    } catch (error) { 
-      setError(error.message); 
-      setCargando(false);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al actualizar');
+      }
+    } catch (error) {
+      setError(error.message);
     }
   };
 
   const generarQR = async () => {
-    setCargando(true);
     try {
       const responsePaquetes = await fetch(`${API_URL}/paquetes?limit=100&_t=${Date.now()}`, {
         credentials: 'include',
@@ -391,24 +314,30 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
         method: 'POST', 
         credentials: 'include',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ id: nuevoID, peso: 'Pendiente', precio: 'Pendiente', origen: 'Miami', observaciones: '', pagado: false })
+        body: JSON.stringify({ 
+          id: nuevoID, 
+          peso: 'Pendiente', 
+          precio: 'Pendiente', 
+          origen: 'Miami', 
+          observaciones: '', 
+          pagado: false,
+          tipoEnvio: 'aereo'  // 🔥 Por defecto aéreo al generar QR
+        })
       });
       if (response.ok) {
         setQrGenerado(nuevoID);
         setMensajeExito(`QR guardado: ${nuevoID}`);
-        await cargarPaquetes(false, true, true);
+        await refrescarDatos();
       } else if (response.status === 403) {
         throw new Error('No tienes permiso para registrar paquetes');
       }
     } catch (error) { 
       setError(error.message); 
-      setCargando(false);
     }
   };
 
   const handleMarcarFantasma = async (paquete) => {
     if (!window.confirm(`Seguro que quieres enviar el paquete ${paquete.tracking_id || paquete.id} a la lista de Fantasmas?`)) return;
-    setCargando(true);
     try {
       const idActual = paquete.tracking_id || paquete.id;
       const response = await fetch(`${API_URL}/actualizar-datos`, {
@@ -419,13 +348,12 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
       });
       if (response.ok) {
         setMensajeExito(`Paquete ${idActual} enviado al Limbo.`);
-        await cargarPaquetes(false, true, true);
+        await refrescarDatos();
       } else if (response.status === 403) {
         throw new Error('No tienes permiso para marcar paquetes como fantasma');
       } else throw new Error('Error al enviar a fantasmas');
     } catch (error) { 
       setError(error.message); 
-      setCargando(false);
     }
   };
 
@@ -437,6 +365,73 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const handleEditar = (paquete) => { setPaqueteAEditar(paquete); setEditando(true); };
   const handleVerQR = (paquete) => { if (paquete) setMostrarQR({ id: paquete.tracking_id || paquete.id }); };
   const paquetesFiltrados = (lista) => filtros.busqueda ? lista.filter(p => (p.tracking_id || p.id || '').toLowerCase().includes(filtros.busqueda.toLowerCase())) : lista;
+
+  // LOGICA DE MENU BASADA EN ROL
+  const getMenuItems = () => {
+    if (esSuperAdmin) {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'empleados', label: 'Empleados', icon: '👥' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'admin') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'contador') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'empleado') {
+      return [
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    return [];
+  };
+
+  const menuItems = getMenuItems();
+  const [pestanaActiva, setPestanaActiva] = useState(menuItems.length > 0 ? menuItems[0].id : '');
+
+  useEffect(() => {
+    if (menuItems.length > 0) {
+      const tieneAcceso = menuItems.some(item => item.id === pestanaActiva);
+      if (!tieneAcceso) {
+        setPestanaActiva(menuItems[0].id);
+      }
+    }
+  }, [userRol, esSuperAdmin, pestanaActiva, menuItems]);
 
   const renderInfoPagoReportado = (paquete) => {
     if (estaPagado(paquete.pagado)) return <span className="wp-badge wp-badge-success">Pagado</span>;
@@ -528,7 +523,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
              </div>
           ) : (
             <>
-              {cargando && primeraCarga && <div className="wp-notice wp-notice-loading"><div className="wp-spinner"></div><span>Cargando paquetes...</span></div>}
+              {cargando && paquetes.length === 0 && <div className="wp-notice wp-notice-loading"><div className="wp-spinner"></div><span>Cargando paquetes...</span></div>}
               {mensajeExito && !cargando && <div className="wp-notice wp-notice-success"><span>{mensajeExito}</span><button onClick={() => setMensajeExito('')} className="wp-notice-close">✕</button></div>}
               {error && !cargando && <div className="wp-notice wp-notice-error"><span>{error}</span><button onClick={() => setError('')} className="wp-notice-close">✕</button></div>}
 
@@ -544,14 +539,12 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
                 />
               )}
 
-              {/* Barra de búsqueda - excepto en ciertas pestañas */}
               {pestanaActiva !== 'estadisticas' && pestanaActiva !== 'empleados' && pestanaActiva !== 'rendimiento' && (
                 <div className="wp-search-box">
                   <input type="text" placeholder="Buscar por ID..." value={filtros.busqueda} onChange={(e) => setFiltros({ ...filtros, busqueda: e.target.value })} className="wp-search-input" />
                 </div>
               )}
 
-              {/* BOTÓN "+" SOLO EN LA PESTAÑA "POR RECIBIR" (pendientes) */}
               {pestanaActiva === 'pendientes' && (userRol !== 'cliente') && (
                 <div className="wp-plus-button-container" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
                   <button 
@@ -582,7 +575,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
                 </div>
               )}
 
-              {/* Mostrar QR generado */}
               {qrGenerado && pestanaActiva === 'pendientes' && (
                 <div className="wp-qr-popup" style={{
                   position: 'fixed',
@@ -617,7 +609,19 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
               )}
 
               {pestanaActiva === 'sin-identificar' && <TablaSinIdentificar paquetes={pSinIdentificar} onAsignar={handleAsignarCliente} permisos={permisos} userRol={userRol} />}
-              {pestanaActiva === 'pendientes' && <TablaPendientes paquetes={pPendientes} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} handleEditar={handleEditar} onAsignar={handleAsignarCliente} onMarcarFantasma={handleMarcarFantasma} permisos={permisos} userRol={userRol} />}
+              
+              {pestanaActiva === 'pendientes' && <TablaPendientes 
+                paquetes={pPendientes} 
+                renderInfoPagoReportado={renderInfoPagoReportado} 
+                handleVerQR={handleVerQR} 
+                handleEditar={handleEditar} 
+                onAsignar={handleAsignarCliente} 
+                onMarcarFantasma={handleMarcarFantasma} 
+                onEliminar={handleEliminarPaquete}
+                permisos={permisos} 
+                userRol={userRol} 
+              />}
+              
               {pestanaActiva === 'proceso-pagado' && <TablaProcesoPagado paquetes={pProcesoPagado} renderInfoPagoReportado={renderInfoPagoReportado} handleVerQR={handleVerQR} marcarComoNoPagado={marcarComoNoPagado} permisos={permisos} userRol={userRol} />}
               
               {pestanaActiva === 'proceso-no-pagado' && <TablaProcesoNoPagado 
@@ -642,7 +646,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
                 </div>
               )}
 
-              {!pagination.has_more && paquetes.length > 0 && !cargando && (
+              {!hasMore && paquetes.length > 0 && !cargando && (
                 <div className="wp-end-list" style={{ textAlign: 'center', padding: '20px', color: '#A0AEC0' }}>
                   No hay mas paquetes para mostrar
                 </div>
@@ -663,7 +667,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
           onAsignado={async () => {
             setMensajeExito('Paquete asignado con exito. Ya no es un fantasma.');
             setMostrarModalAsignar(false);
-            await cargarPaquetes(false, true, true);
+            await refrescarDatos();
           }}
         />
       )}

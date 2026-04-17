@@ -1,6 +1,31 @@
 import React from 'react';
 
-const TablaPendientes = ({ paquetes, renderInfoPagoReportado, handleVerQR, handleEditar, onAsignar, onMarcarFantasma }) => {
+const TablaPendientes = ({ 
+  paquetes, 
+  renderInfoPagoReportado, 
+  handleVerQR, 
+  handleEditar, 
+  onAsignar, 
+  onMarcarFantasma,
+  onEliminar 
+}) => {
+  // 🔥 Función para verificar si el paquete viene de prealerta
+  const esDePrealerta = (paquete) => {
+    return paquete?.tracking_original || paquete?.prealerta_id;
+  };
+
+  // 🔥 Función para verificar si el paquete está completado (tiene peso y precio)
+  const estaCompletado = (paquete) => {
+    const tienePeso = paquete?.peso && paquete.peso !== 'Pendiente' && paquete.peso !== '';
+    const tienePrecio = paquete?.precio && paquete.precio !== 'Pendiente' && paquete.precio !== '';
+    return tienePeso && tienePrecio;
+  };
+
+  // 🔥 Función para verificar si el paquete tiene cliente asignado
+  const tieneCliente = (paquete) => {
+    return paquete?.cliente_uid;
+  };
+
   return (
     <div className="wp-table-container">
       <h3>📌 Paquetes Pendientes</h3>
@@ -21,45 +46,99 @@ const TablaPendientes = ({ paquetes, renderInfoPagoReportado, handleVerQR, handl
           {paquetes.length === 0 ? (
             <tr><td colSpan="8" className="wp-empty">No hay paquetes pendientes</td></tr>
           ) : (
-            paquetes.map((p, index) => (
-              <tr key={p?.tracking_id || p?.id || index}>
-                <td><strong>{p?.tracking_id || p?.id || '—'}</strong></td>
-                <td>{p?.peso || '—'}</td>
-                <td>{p?.precio || p?.precio_usd || '—'}</td>
-                <td>{renderInfoPagoReportado(p)}</td>
-                <td>
-                  {p?.cliente_uid ? (
-                    <span className="cliente-asignado" style={{ color: '#4ade80', fontSize: '12px' }}>
-                      ✅ {p?.cliente_nombre || 'Asignado'}
-                    </span>
-                  ) : (
-                    <span className="cliente-pendiente" style={{ color: '#f87171', fontSize: '12px' }}>
-                      ⚠️ Sin asignar
-                    </span>
-                  )}
-                </td>
-                <td>{p?.Fecha_Origen || '—'}</td>
-                <td>
-                  <button onClick={() => handleVerQR(p)} className="wp-btn-small">🖨️ QR</button>
-                </td>
-                <td style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                  <button onClick={() => handleEditar(p)} className="wp-btn-small">✏️ Completar</button>
-                  <button onClick={() => onAsignar(p)} className="wp-btn-small wp-btn-success">👤 Asignar</button>
-                  
-                  {/* 👈 NUEVO BOTÓN: Solo aparece si NO tiene cliente asignado */}
-                  {!p?.cliente_uid && (
+            paquetes.map((p, index) => {
+              const esPrealerta = esDePrealerta(p);
+              const completado = estaCompletado(p);
+              const tieneClienteAsignado = tieneCliente(p);
+              
+              return (
+                <tr key={p?.tracking_id || p?.id || index}>
+                  <td><strong>{p?.tracking_id || p?.id || '—'}</strong></td>
+                  <td>
+                    {p?.peso || '—'}
+                    {!completado && !esPrealerta && (
+                      <span style={{ display: 'block', fontSize: '10px', color: '#f87171' }}>
+                        ⚠️ Pendiente
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {p?.precio || p?.precio_usd || '—'}
+                    {!completado && !esPrealerta && (
+                      <span style={{ display: 'block', fontSize: '10px', color: '#f87171' }}>
+                        ⚠️ Pendiente
+                      </span>
+                    )}
+                  </td>
+                  <td>{renderInfoPagoReportado(p)}</td>
+                  <td>
+                    {tieneClienteAsignado ? (
+                      <span className="cliente-asignado" style={{ color: '#4ade80', fontSize: '12px' }}>
+                        ✅ {p?.cliente_nombre || 'Asignado'}
+                        {esPrealerta && (
+                          <span style={{ display: 'block', fontSize: '10px', color: '#D4AF37' }}>
+                            📋 Prealerta
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="cliente-pendiente" style={{ color: '#f87171', fontSize: '12px' }}>
+                        ⚠️ Sin asignar
+                        {!completado && !esPrealerta && (
+                          <span style={{ display: 'block', fontSize: '10px', color: '#D4AF37' }}>
+                            🔧 Complete primero
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                  <td>{p?.Fecha_Origen || '—'}</td>
+                  <td>
+                    <button onClick={() => handleVerQR(p)} className="wp-btn-small">🖨️ QR</button>
+                  </td>
+                  <td style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    {/* 🔥 Botón Completar: Siempre visible para editar */}
+                    <button onClick={() => handleEditar(p)} className="wp-btn-small">✏️ Completar</button>
+                    
+                    {/* 🔥 Botón Asignar: SOLO si está completado, NO tiene cliente Y NO es prealerta */}
+                    {completado && !tieneClienteAsignado && !esPrealerta && (
+                      <button onClick={() => onAsignar(p)} className="wp-btn-small wp-btn-success">👤 Asignar</button>
+                    )}
+                    
+                    {/* 🔥 Botón Fantasma: Solo si NO tiene cliente asignado Y NO está completado */}
+                    {!tieneClienteAsignado && !completado && !esPrealerta && (
+                      <button 
+                        onClick={() => onMarcarFantasma(p)} 
+                        className="wp-btn-small" 
+                        style={{ background: '#f87171', color: 'white', border: 'none' }}
+                        title="Enviar a Paquetes Sin Identificar"
+                      >
+                        👻
+                      </button>
+                    )}
+                    
+                    {/* Botón Eliminar: Aparece para todos */}
                     <button 
-                      onClick={() => onMarcarFantasma(p)} 
+                      onClick={() => {
+                        if (window.confirm(`¿Estás seguro de eliminar el paquete ${p?.tracking_id || p?.id}?\n\nEsta acción no se puede deshacer.`)) {
+                          onEliminar(p);
+                        }
+                      }} 
                       className="wp-btn-small" 
-                      style={{ background: '#f87171', color: 'white', border: 'none' }}
-                      title="Enviar a Paquetes Sin Identificar"
+                      style={{ 
+                        background: '#dc2626', 
+                        color: 'white', 
+                        border: 'none',
+                        fontWeight: 'bold'
+                      }}
+                      title="Eliminar paquete (Creado por error)"
                     >
-                      👻
+                      🗑️
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

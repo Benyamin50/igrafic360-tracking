@@ -28,12 +28,12 @@ class ApiService {
       );
       
       print('Status code login: ${response.statusCode}');
-      print('Respuesta login: ${response.body}'); // 👈 LOG AGREGADO
+      print('Respuesta login: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Datos del cliente: ${data['cliente']}'); // 👈 LOG AGREGADO
-        print('UID del cliente: ${data['cliente']['uid']}'); // 👈 LOG AGREGADO
+        print('Datos del cliente: ${data['cliente']}');
+        print('UID del cliente: ${data['cliente']['uid']}');
         _currentUid = data['cliente']['uid'];
         print('UID guardado: $_currentUid');
         return data['cliente'];
@@ -70,7 +70,7 @@ class ApiService {
   
   // Obtener headers de autenticacion con el UID actual
   static Map<String, String> _getAuthHeaders() {
-    print('🔐 _currentUid al hacer peticion: $_currentUid'); // 👈 LOG AGREGADO
+    print('_currentUid al hacer peticion: $_currentUid');
     return {
       'Content-Type': 'application/json',
       'X-User-UID': _currentUid ?? '',
@@ -85,7 +85,7 @@ class ApiService {
   static Future<Map<String, dynamic>> obtenerEstado(String trackingId) async {
     try {
       print('Consultando tracking: $trackingId');
-      print('Headers: ${_getAuthHeaders()}'); // 👈 LOG AGREGADO
+      print('Headers: ${_getAuthHeaders()}');
       
       final response = await http.get(
         Uri.parse('$baseUrl/tracking/$trackingId'),
@@ -98,8 +98,9 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         print('Datos recibidos: $data');
         
+        // CORREGIDO: usar guion bajo en Origen_paquete_recibido
         Map<String, dynamic> estado = {
-          'Origen_paquete-recibido': '',
+          'Origen_paquete_recibido': '',
           'Fecha_Origen': '',
           'Ubicacion_1': '',
           'Fecha_1': '',
@@ -118,7 +119,7 @@ class ApiService {
           
           switch (i) {
             case 0:
-              estado['Origen_paquete-recibido'] = evento['evento'] ?? '';
+              estado['Origen_paquete_recibido'] = evento['evento'] ?? '';
               estado['Fecha_Origen'] = evento['fecha'] ?? '';
               break;
             case 1:
@@ -150,7 +151,7 @@ class ApiService {
       } else if (response.statusCode == 404) {
         print('Tracking no encontrado');
         return {
-          'Origen_paquete-recibido': '',
+          'Origen_paquete_recibido': '',
           'Fecha_Origen': '',
           'Ubicacion_1': '',
           'Fecha_1': '',
@@ -188,11 +189,13 @@ class ApiService {
       print('Status code paquete-completo: ${response.statusCode}');
       print('Respuesta raw: ${response.body}');
       
+      // AGREGAR observaciones al mapa de datos de pago
       Map<String, dynamic> datosPago = {
         'pagado': false,
         'estado_pago': 'pendiente',
         'metodo_pago': null,
         'cliente_nombre': null,
+        'observaciones': '',
       };
       
       if (response.statusCode == 200) {
@@ -203,6 +206,7 @@ class ApiService {
           'estado_pago': data['estado_pago'] ?? 'pendiente',
           'metodo_pago': data['metodo_pago'],
           'cliente_nombre': data['cliente_nombre'],
+          'observaciones': data['observaciones'] ?? '',
         };
       }
       
@@ -213,6 +217,7 @@ class ApiService {
         'estado_pago': datosPago['estado_pago'],
         'metodo_pago': datosPago['metodo_pago'],
         'cliente_nombre': datosPago['cliente_nombre'],
+        'observaciones': datosPago['observaciones'],
       };
       
     } catch (e) {
@@ -225,9 +230,9 @@ class ApiService {
   static List<Map<String, dynamic>> _convertirEstadoALista(Map<String, dynamic> estado) {
     List<Map<String, dynamic>> eventos = [];
     
-    if (estado['Origen_paquete-recibido'].isNotEmpty) {
+    if (estado['Origen_paquete_recibido'].isNotEmpty) {
       eventos.add({
-        'evento': estado['Origen_paquete-recibido'],
+        'evento': estado['Origen_paquete_recibido'],
         'fecha': estado['Fecha_Origen'],
       });
     }
@@ -440,15 +445,85 @@ class ApiService {
     }
   }
 
+  // ============================================
+  // PREALERTA
+  // ============================================
+  
+  // Buscar prealerta por tracking original
+  static Future<Map<String, dynamic>?> buscarPrealerta(String trackingOriginal) async {
+    try {
+      print('Buscando prealerta para tracking: $trackingOriginal');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/prealerta/buscar?tracking=$trackingOriginal'),
+        headers: _getAuthHeaders(),
+      );
+      
+      print('Status code buscarPrealerta: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('Prealerta encontrada: $data');
+        return data;
+      } else if (response.statusCode == 404) {
+        print('No se encontro prealerta');
+        return null;
+      } else {
+        print('Error buscando prealerta: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error en buscarPrealerta: $e');
+      return null;
+    }
+  }
+
+  // Crear paquete desde prealerta (cuando el empleado escanea)
+  static Future<Map<String, dynamic>?> crearPaqueteDesdePrealerta({
+    required String trackingOriginal,
+    required String peso,
+    required String precio,
+  }) async {
+    try {
+      print('Creando paquete desde prealerta: $trackingOriginal');
+      print('Peso: $peso, Precio: $precio');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/prealerta/crear-paquete'),
+        headers: _getAuthHeaders(),
+        body: json.encode({
+          'tracking_original': trackingOriginal,
+          'peso': peso,
+          'precio': precio,
+        }),
+      );
+      
+      print('Status code crearPaquete: ${response.statusCode}');
+      print('Respuesta: ${response.body}');
+      
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('Paquete creado exitosamente: ${data['tracking_id']}');
+        return data;
+      } else {
+        print('Error creando paquete: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error en crearPaqueteDesdePrealerta: $e');
+      return null;
+    }
+  }
+
   // OBTENER FECHA ACTUAL FORMATEADA (Hora Local del Celular)
   static String _getCurrentDate() {
-    final now = DateTime.now(); // Usa la hora exacta de tu teléfono
+    final now = DateTime.now();
     
     String year = now.year.toString();
     String month = now.month.toString().padLeft(2, '0');
     String day = now.day.toString().padLeft(2, '0');
     
-    String hour = now.hour.toString().padLeft(2, '0'); // Formato 24h (Ej: 13)
+    String hour = now.hour.toString().padLeft(2, '0');
     String minute = now.minute.toString().padLeft(2, '0');
     String second = now.second.toString().padLeft(2, '0');
     
