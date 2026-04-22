@@ -28,14 +28,16 @@ const ModalEditarPaquete = ({ editando, paqueteAEditar, setEditando, handleGuard
         </div>
         <div className="wp-modal-body">
           <RegistroForm 
-            onSubmit={handleGuardarDatosCompletos} 
+            onSubmit={async (datosFormateados) => {
+              // 🔥 ESPERAR a que se complete la actualización
+              await handleGuardarDatosCompletos(datosFormateados);
+              setEditando(false);
+            }} 
             cargando={cargando}
             esPrealerta={esPrealerta}
-            // Pasamos el paquete completo para asegurarnos de que la info llegue bien
             datosCliente={{
               tipo_envio: paqueteAEditar.tipo_envio,
               observaciones: paqueteAEditar.observaciones,
-              // 🔥 AQUÍ ESTÁ LA MAGIA: Solo agarramos el de la base de datos (Ej: 444)
               tracking_original: paqueteAEditar.tracking_original,
               peso: paqueteAEditar.peso
             }}

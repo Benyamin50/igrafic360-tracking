@@ -98,7 +98,6 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         print('Datos recibidos: $data');
         
-        // CORREGIDO: usar guion bajo en Origen_paquete_recibido
         Map<String, dynamic> estado = {
           'Origen_paquete_recibido': '',
           'Fecha_Origen': '',
@@ -189,7 +188,6 @@ class ApiService {
       print('Status code paquete-completo: ${response.statusCode}');
       print('Respuesta raw: ${response.body}');
       
-      // AGREGAR observaciones al mapa de datos de pago
       Map<String, dynamic> datosPago = {
         'pagado': false,
         'estado_pago': 'pendiente',
@@ -512,6 +510,151 @@ class ApiService {
     } catch (e) {
       print('Error en crearPaqueteDesdePrealerta: $e');
       return null;
+    }
+  }
+
+  // ============================================
+  // ENVÍOS (LOTES) - MÉTODOS
+  // ============================================
+
+  // Asignar paquete a un envío
+  static Future<Map<String, dynamic>> asignarPaqueteAEnvio({
+    required String trackingId,
+    required String tipoEnvio,
+  }) async {
+    try {
+      print('📦 Asignando paquete a envío: $trackingId - $tipoEnvio');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/paquete/asignar-envio'),
+        headers: _getAuthHeaders(),
+        body: json.encode({
+          'tracking_id': trackingId,
+          'tipo_envio': tipoEnvio,
+        }),
+      );
+      
+      print('Status code asignarPaqueteAEnvio: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Error al asignar paquete');
+      }
+      
+      return json.decode(response.body);
+    } catch (e) {
+      print('Error en asignarPaqueteAEnvio: $e');
+      throw Exception('Error de conexion: $e');
+    }
+  }
+
+  // Procesar salida de envío (actualizar todos los paquetes)
+  static Future<Map<String, dynamic>> procesarSalidaEnvio(String codigoQr) async {
+    try {
+      print('🚢 Procesando salida de envío: $codigoQr');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/envio/procesar-salida'),
+        headers: _getAuthHeaders(),
+        body: json.encode({'codigo_qr': codigoQr}),
+      );
+      
+      print('Status code procesarSalidaEnvio: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Error procesando salida');
+      }
+      
+      final data = json.decode(response.body);
+      print('✅ Salida procesada: ${data['paquetes_actualizados']} paquetes actualizados');
+      return data;
+    } catch (e) {
+      print('Error en procesarSalidaEnvio: $e');
+      throw Exception('Error de conexion: $e');
+    }
+  }
+
+  // 🔥 NUEVO: Procesar salida de envío CON UBICACIÓN ESPECÍFICA
+  static Future<Map<String, dynamic>> procesarSalidaEnvioConUbicacion({
+    required String codigoQr,
+    required String columna,
+    required String valor,
+  }) async {
+    try {
+      print('🚢 Procesando salida de envío con ubicación: $codigoQr - $columna: $valor');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/envio/procesar-salida'),
+        headers: _getAuthHeaders(),
+        body: json.encode({
+          'codigo_qr': codigoQr,
+          'ubicacion': {
+            'columna': columna,
+            'valor': valor
+          }
+        }),
+      );
+      
+      print('Status code: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Error procesando salida');
+      }
+      
+      final data = json.decode(response.body);
+      print('✅ Salida procesada: ${data['paquetes_actualizados']} paquetes actualizados');
+      return data;
+    } catch (e) {
+      print('Error en procesarSalidaEnvioConUbicacion: $e');
+      throw Exception('Error de conexion: $e');
+    }
+  }
+
+  // Obtener envíos activos
+  // 🔥 AQUÍ ESTÁ EL CAMBIO: Se agregó el parámetro '{bool todos = false}'
+  static Future<Map<String, dynamic>> obtenerEnviosActivos({bool todos = false}) async {
+    try {
+      final String url = todos 
+          ? '$baseUrl/api/envios/activos?todos=true' 
+          : '$baseUrl/api/envios/activos';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _getAuthHeaders(),
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Error cargando envíos');
+      }
+      
+      return json.decode(response.body);
+    } catch (e) {
+      return {'envios': []};
+    }
+  }
+
+  // Obtener paquetes de un envío específico
+  static Future<Map<String, dynamic>> obtenerPaquetesEnvio(int envioId) async {
+    try {
+      print('📦 Obteniendo paquetes del envío: $envioId');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/envio/$envioId/paquetes'),
+        headers: _getAuthHeaders(),
+      );
+      
+      print('Status code obtenerPaquetesEnvio: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        throw Exception('Error cargando paquetes del contenedor');
+      }
+      
+      return json.decode(response.body);
+    } catch (e) {
+      print('Error en obtenerPaquetesEnvio: $e');
+      return {'paquetes': []};
     }
   }
 

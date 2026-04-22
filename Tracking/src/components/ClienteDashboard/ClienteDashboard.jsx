@@ -162,9 +162,16 @@ const ClienteDashboard = ({ user, uid }) => {
     }
   }, []);
 
+  // 🔥 SOLO ESTO CAMBIÓ - Limpiar el paquete anterior antes de cargar el nuevo
   const verTracking = useCallback((id) => {
-    setSelectedPaquete(id);
-    cargarFotos(id);
+    // Limpiar el paquete seleccionado actual
+    setSelectedPaquete(null);
+    
+    // Pequeño delay para asegurar que React limpie el componente
+    setTimeout(() => {
+      setSelectedPaquete(id);
+      cargarFotos(id);
+    }, 10);
   }, [cargarFotos]);
 
   const obtenerPrecioPaquete = useCallback((trackingId) => {

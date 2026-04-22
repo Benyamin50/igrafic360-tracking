@@ -13,6 +13,7 @@ import TablaProcesoNoPagado from './Tablas/TablaProcesoNoPagado';
 import TablaCompletados from './Tablas/TablaCompletados';
 import TablaAdvertencia from './Tablas/TablaAdvertencia';
 import TablaEmpleados from './Tablas/TablaEmpleados';
+import TablaEnvios from './Tablas/TablaEnvios';
 import ModalComprobante from './Modales/ModalComprobante';
 import ModalEditarPaquete from './Modales/ModalEditarPaquete';
 import ModalQR from './Modales/ModalQR';
@@ -47,7 +48,7 @@ const esFantasma = (valor) => {
 };
 
 const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', permisos = [] }) => {
-  // 🔥 USANDO SWR - Carga con caché e infinite scroll
+  // USANDO SWR - Carga con caché e infinite scroll
   const { 
     paquetes, 
     isLoading: cargando, 
@@ -82,6 +83,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const [filtros, setFiltros] = useState({ busqueda: '', fechaInicio: '', fechaFin: '', estado: 'todos' });
 
   const [totalEmpleados, setTotalEmpleados] = useState(0);
+  const [totalEnvios, setTotalEnvios] = useState(0); // 🔥 CONTADOR DE CONTENEDORES
 
   // Calcular estadisticas cuando cambian los paquetes
   useEffect(() => {
@@ -128,6 +130,25 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
       ingresosMes 
     });
   };
+
+  // 🔥 Cargar total de contenedores
+  const cargarTotalEnvios = useCallback(async () => {
+    try {
+      const timestamp = Date.now();
+      const response = await fetch(`${API_URL}/api/envios/activos?todos=true&_t=${timestamp}`, {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTotalEnvios(data.envios?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error cargando total de envíos:', error);
+    }
+  }, []);
 
   // Manejar scroll para cargar mas
   useEffect(() => {
@@ -181,6 +202,9 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
             }
           }
           
+          // 🔥 Cargar total de contenedores
+          cargarTotalEnvios();
+          
           setPrimeraCarga(false);
         } else {
           setError('No hay sesion activa. Por favor, inicia sesion.');
@@ -193,12 +217,13 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     };
     
     verificarSesion();
-  }, []);
+  }, [cargarTotalEnvios]);
 
   // Funcion para refrescar datos despues de acciones
   const refrescarDatos = useCallback(async () => {
     await mutatePaquetes();
-  }, [mutatePaquetes]);
+    await cargarTotalEnvios(); // 🔥 También recargar contador de contenedores
+  }, [mutatePaquetes, cargarTotalEnvios]);
 
   const marcarComoPagado = async (paquete) => { 
     if (!window.confirm(`Aprobar el pago del paquete ${paquete.tracking_id || paquete.id}?`)) return;
@@ -253,7 +278,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     }
   };
 
-  // 🔥 FUNCIÓN CORREGIDA - AHORA INCLUYE tipoEnvio
   const handleGuardarDatosCompletos = async (datosCompletos) => {
     if (!paqueteAEditar) return;
     
@@ -268,10 +292,9 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
         precio: datosCompletos.precio || 'Pendiente',
         origen: datosCompletos.origen || 'Miami',
         observaciones: datosCompletos.observaciones || '',
-        tipoEnvio: datosCompletos.tipoEnvio  // 🔥 AGREGADO - Guardar tipo de envío
+        tipoEnvio: datosCompletos.tipoEnvio,
+        modoProcesamiento: datosCompletos.modoProcesamiento
       };
-      
-      console.log("📦 Enviando al backend:", payload);
       
       const response = await fetch(`${API_URL}/actualizar-datos`, {
         method: 'POST',
@@ -281,15 +304,31 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
       });
       
       if (response.ok) {
-        setMensajeExito(`Datos de ${idActual} actualizados correctamente`);
+        if (datosCompletos.modoProcesamiento === 'contenedor' && paqueteAEditar.cliente_uid) {
+          const envioResponse = await fetch(`${API_URL}/api/paquete/asignar-contenedor`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              tracking_id: idActual,
+              tipo_envio: datosCompletos.tipoEnvio || 'aereo'
+            })
+          });
+          
+          if (envioResponse.ok) {
+            setMensajeExito(`✅ ${idActual} actualizado y asignado al contenedor`);
+          } else {
+            setMensajeExito(`⚠️ ${idActual} actualizado pero error al asignar al contenedor`);
+          }
+        } else {
+          setMensajeExito(`✈️ ${idActual} actualizado - Modo individual (sin contenedor)`);
+        }
+        
         setEditando(false);
         setPaqueteAEditar(null);
         await refrescarDatos();
-      } else if (response.status === 403) {
-        throw new Error('No tienes permiso para editar paquetes');
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al actualizar');
+        throw new Error('Error al actualizar');
       }
     } catch (error) {
       setError(error.message);
@@ -321,7 +360,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
           origen: 'Miami', 
           observaciones: '', 
           pagado: false,
-          tipoEnvio: 'aereo'  // 🔥 Por defecto aéreo al generar QR
+          tipoEnvio: 'aereo'
         })
       });
       if (response.ok) {
@@ -366,13 +405,13 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const handleVerQR = (paquete) => { if (paquete) setMostrarQR({ id: paquete.tracking_id || paquete.id }); };
   const paquetesFiltrados = (lista) => filtros.busqueda ? lista.filter(p => (p.tracking_id || p.id || '').toLowerCase().includes(filtros.busqueda.toLowerCase())) : lista;
 
-  // LOGICA DE MENU BASADA EN ROL
   const getMenuItems = () => {
     if (esSuperAdmin) {
       return [
         { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
         { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
         { id: 'empleados', label: 'Empleados', icon: '👥' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
         { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
         { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
         { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
@@ -386,6 +425,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
       return [
         { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
         { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
         { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
         { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
         { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
@@ -398,6 +438,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     if (userRol === 'contador') {
       return [
         { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
         { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
         { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
         { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
@@ -409,6 +450,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     
     if (userRol === 'empleado') {
       return [
+        { id: 'envios', label: 'Envíos', icon: '📦' },
         { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
         { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
         { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
@@ -476,9 +518,11 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const pCompletados = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && estaPagado(p.pagado) && p.cliente_uid));
   const pAdvertencia = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && !estaPagado(p.pagado) && p.cliente_uid));
 
+  // 🔥 MENÚ CON CONTADORES - AHORA INCLUYE ENVÍOS
   const menuItemsWithCounts = menuItems.map(item => {
     switch(item.id) {
       case 'empleados': return { ...item, count: totalEmpleados };
+      case 'envios': return { ...item, count: totalEnvios };
       case 'sin-identificar': return { ...item, count: pSinIdentificar.length };
       case 'pendientes': return { ...item, count: pPendientes.length };
       case 'proceso-pagado': return { ...item, count: pProcesoPagado.length };
@@ -510,7 +554,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
               <button key={item.id} className={`wp-nav-item ${pestanaActiva === item.id ? 'active' : ''}`} onClick={() => { setPestanaActiva(item.id); setSidebarOpen(false); }}>
                 <span className="wp-nav-icon">{item.icon}</span>
                 <span className="wp-nav-label">{item.label}</span>
-                {item.count !== undefined && <span className="wp-nav-count">{item.count}</span>}
+                {item.count !== undefined && item.count !== null && <span className="wp-nav-count">{item.count}</span>}
               </button>
             ))}
           </nav>
@@ -539,7 +583,9 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
                 />
               )}
 
-              {pestanaActiva !== 'estadisticas' && pestanaActiva !== 'empleados' && pestanaActiva !== 'rendimiento' && (
+              {pestanaActiva === 'envios' && <TablaEnvios />}
+
+              {pestanaActiva !== 'estadisticas' && pestanaActiva !== 'empleados' && pestanaActiva !== 'rendimiento' && pestanaActiva !== 'envios' && (
                 <div className="wp-search-box">
                   <input type="text" placeholder="Buscar por ID..." value={filtros.busqueda} onChange={(e) => setFiltros({ ...filtros, busqueda: e.target.value })} className="wp-search-input" />
                 </div>

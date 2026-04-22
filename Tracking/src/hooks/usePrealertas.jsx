@@ -3,36 +3,40 @@ import useSWR from 'swr';
 import { API_URL } from '../services/api';
 
 const fetcher = async (url) => {
-  const response = await fetch(url, {
+  console.log('🔍 FETCHING PREALERTAS:', url);
+  const res = await fetch(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' }
   });
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Error al cargar prealertas');
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('text/html')) {
+    window.location.reload();
+    return null;
   }
   
-  const data = await response.json();
+  if (!res.ok) {
+    throw new Error('Error al cargar prealertas');
+  }
+  
+  const data = await res.json();
   return data.prealertas || [];
 };
 
-export const usePrealertas = (uid) => {
-  const { data, error, isLoading, mutate } = useSWR(
-    uid ? `${API_URL}/api/prealerta/mis-prealertas` : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60000, // 1 minuto de caché
-      refreshInterval: 30000, // Actualizar cada 30 segundos en segundo plano
-    }
-  );
-
+export function usePrealertas(uid) {
+  const url = uid ? `${API_URL}/api/prealerta/mis-prealertas` : null;
+  
+  const { data, error, isLoading, mutate } = useSWR(url, fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,  // ✅ AGREGADO para que sea igual
+    revalidateIfStale: true,
+    dedupingInterval: 2000,
+  });
+  
   return {
     prealertas: data || [],
-    isLoading: isLoading,
-    isError: error,
-    mutate: mutate
+    isLoading,
+    error,
+    mutate,
   };
-};
+}

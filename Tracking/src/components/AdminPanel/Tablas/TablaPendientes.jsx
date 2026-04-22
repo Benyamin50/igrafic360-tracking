@@ -23,7 +23,7 @@ const TablaPendientes = ({
 
   // 🔥 Función para verificar si el paquete tiene cliente asignado
   const tieneCliente = (paquete) => {
-    return paquete?.cliente_uid;
+    return paquete?.cliente_uid && paquete?.cliente_uid !== 'NULL' && paquete?.cliente_uid !== null;
   };
 
   return (
@@ -100,13 +100,13 @@ const TablaPendientes = ({
                     {/* 🔥 Botón Completar: Siempre visible para editar */}
                     <button onClick={() => handleEditar(p)} className="wp-btn-small">✏️ Completar</button>
                     
-                    {/* 🔥 Botón Asignar: SOLO si está completado, NO tiene cliente Y NO es prealerta */}
+                    {/* 🔥 Botón Asignar: SOLO si está completado y NO tiene cliente */}
                     {completado && !tieneClienteAsignado && !esPrealerta && (
                       <button onClick={() => onAsignar(p)} className="wp-btn-small wp-btn-success">👤 Asignar</button>
                     )}
                     
-                    {/* 🔥 Botón Fantasma: Solo si NO tiene cliente asignado Y NO está completado */}
-                    {!tieneClienteAsignado && !completado && !esPrealerta && (
+                    {/* 🔥 Botón Fantasma: AHORA aparece si NO tiene cliente asignado (sin importar si está completado o no) */}
+                    {!tieneClienteAsignado && (
                       <button 
                         onClick={() => onMarcarFantasma(p)} 
                         className="wp-btn-small" 

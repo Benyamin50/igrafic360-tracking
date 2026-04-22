@@ -6,7 +6,15 @@ const TablaCompletados = ({ paquetes, renderInfoPagoReportado, handleVerQR, marc
       <h3>✅ Paquetes Completados</h3>
       <table className="wp-table">
         <thead>
-          <tr><th>ID</th><th>Peso</th><th>Precio USD</th><th>Estado / Reporte</th><th>Fecha Entrega</th><th>QR</th><th>Acciones</th></tr>
+          <tr>
+            <th>ID</th>
+            <th>Peso</th>
+            <th>Precio USD</th>
+            <th>Estado / Reporte</th>
+            <th>Fecha Entrega</th>
+            <th>QR</th>
+            <th>Acciones</th>
+          </tr>
         </thead>
         <tbody>
           {paquetes.length === 0 ? (
@@ -19,8 +27,19 @@ const TablaCompletados = ({ paquetes, renderInfoPagoReportado, handleVerQR, marc
                 <td>{p?.precio || p?.precio_usd || '—'}</td>
                 <td>{renderInfoPagoReportado(p)}</td>
                 <td>{p?.Fecha_5 || p?.Fecha_Origen || '—'}</td>
-                <td><button onClick={() => handleVerQR(p)} className="wp-btn-small">🖨️ QR</button></td>
-                <td><button onClick={() => marcarComoNoPagado(p)} className="wp-btn wp-btn-warning">🔄 Desmarcar</button></td>
+                
+                {/* 🔥 QR Bloqueado automáticamente porque ya se entregó */}
+                <td>
+                  <span style={{ fontSize: '11px', color: '#4ade80', fontWeight: 'bold' }}>
+                    ✅ Entregado
+                  </span>
+                </td>
+                
+                <td>
+                  <button onClick={() => marcarComoNoPagado(p)} className="wp-btn wp-btn-warning">
+                    🔄 Desmarcar
+                  </button>
+                </td>
               </tr>
             ))
           )}

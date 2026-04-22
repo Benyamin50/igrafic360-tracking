@@ -8,12 +8,12 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
     origen: 'Miami',
     destino: 'Caracas',
     tipoEnvio: esPrealerta ? (datosCliente.tipo_envio || 'aereo') : 'aereo',
+    modoProcesamiento: 'contenedor', // 🔥 NUEVO: 'contenedor' o 'individual'
     pesoReal: '',
     alto: '',
     largo: '',
     ancho: '',
-    // Si NO es prealerta, empezamos con observaciones vacías
-    observaciones: !esPrealerta ? '' : (datosCliente.observaciones || '') 
+    observaciones: !esPrealerta ? '' : (datosCliente.observaciones || '')
   });
 
   const [calculo, setCalculo] = useState(null);
@@ -65,7 +65,6 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
     e.preventDefault();
     const erroresTemp = {};
     
-    // Solo validar observaciones si NO es prealerta
     if (!esPrealerta && !formData.observaciones.trim()) {
       erroresTemp.observaciones = 'Debes agregar una observacion o descripcion del paquete';
     }
@@ -87,19 +86,20 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
       peso: calculo ? calculo.pesoACobrarTexto : '',
       precio: calculo ? `$${calculo.totalUSD}` : '',
       observaciones: esPrealerta 
-        ? datosCliente.observaciones // Si es prealerta, usa la original
+        ? datosCliente.observaciones
         : `${formData.tipoEnvio === 'aereo' ? 'Aereo' : 'Maritimo'} Destino: ${formData.destino} | ${formData.observaciones}`,
       peso_volumetrico: calculo?.pesoVolumetricoKg || calculo?.piesCubicos,
       tasa_usada: calculo?.tasaEUR,
-      tipoEnvio: formData.tipoEnvio
+      tipoEnvio: formData.tipoEnvio,
+      modoProcesamiento: formData.modoProcesamiento  // 🔥 Enviar también esta opción
     };
     
     onSubmit(datosFormateados);
     
-    // Solo resetear si NO es prealerta
     if (!esPrealerta) {
       setFormData({
         origen: 'Miami', destino: 'Caracas', tipoEnvio: 'aereo',
+        modoProcesamiento: 'contenedor',
         pesoReal: '', alto: '', largo: '', ancho: '', observaciones: ''
       });
       setCalculo(null);
@@ -130,6 +130,66 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
           </p>
         </div>
       )}
+
+      {/* 🔥 NUEVA SECCIÓN: MODO DE PROCESAMIENTO */}
+      <div className="form-section">
+        <h4>📦 Modo de procesamiento</h4>
+        <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+          <label style={{ 
+            flex: 1,
+            padding: '15px',
+            background: formData.modoProcesamiento === 'contenedor' ? '#D4AF37' : '#1A202C',
+            color: formData.modoProcesamiento === 'contenedor' ? '#000' : '#fff',
+            textAlign: 'center',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            border: `1px solid ${formData.modoProcesamiento === 'contenedor' ? '#D4AF37' : '#4A5568'}`,
+            transition: '0.3s'
+          }}>
+            <input
+              type="radio"
+              name="modoProcesamiento"
+              value="contenedor"
+              checked={formData.modoProcesamiento === 'contenedor'}
+              onChange={handleChange}
+              style={{ display: 'none' }}
+            />
+            <span style={{ fontSize: '20px', display: 'block' }}>📦</span>
+            ENVIAR AL CONTENEDOR
+            <span style={{ display: 'block', fontSize: '11px', marginTop: '5px', opacity: 0.8 }}>
+              Asignar al lote (aéreo/marítimo)
+            </span>
+          </label>
+
+          <label style={{ 
+            flex: 1,
+            padding: '15px',
+            background: formData.modoProcesamiento === 'individual' ? '#3182CE' : '#1A202C',
+            color: '#fff',
+            textAlign: 'center',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            border: `1px solid ${formData.modoProcesamiento === 'individual' ? '#3182CE' : '#4A5568'}`,
+            transition: '0.3s'
+          }}>
+            <input
+              type="radio"
+              name="modoProcesamiento"
+              value="individual"
+              checked={formData.modoProcesamiento === 'individual'}
+              onChange={handleChange}
+              style={{ display: 'none' }}
+            />
+            <span style={{ fontSize: '20px', display: 'block' }}>✈️</span>
+            VIAJE INDIVIDUAL
+            <span style={{ display: 'block', fontSize: '11px', marginTop: '5px', opacity: 0.8 }}>
+              No asignar a ningún lote
+            </span>
+          </label>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <label style={{ 
@@ -182,6 +242,7 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
         </label>
       </div>
 
+      {/* Resto del formulario igual */}
       <div className="form-row">
         <div className="form-group" style={{ flex: 1 }}>
           <label>Origen:</label>
@@ -265,7 +326,6 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
         </div>
       )}
 
-      {/* Campo observaciones - SOLO VISIBLE SI NO ES PREALERTA */}
       {!esPrealerta && (
         <div className="form-group">
           <label>Observaciones <span style={{ color: '#f87171' }}>*</span></label>
@@ -288,7 +348,6 @@ const RegistroForm = ({ onSubmit, cargando = false, esPrealerta = false, datosCl
         </div>
       )}
 
-      {/* Si es prealerta, mostrar la descripcion que puso el cliente (solo lectura) */}
       {esPrealerta && datosCliente.observaciones && (
         <div className="form-group">
           <label>Descripcion del cliente:</label>
