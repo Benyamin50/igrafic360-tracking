@@ -12,6 +12,8 @@
   "dependencies": {
     "date-fns": "^4.1.0",
     "firebase": "^12.10.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",

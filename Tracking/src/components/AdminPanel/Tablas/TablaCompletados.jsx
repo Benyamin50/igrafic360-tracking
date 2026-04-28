@@ -1,6 +1,46 @@
+// src/components/AdminPanel/Tablas/TablaCompletados.jsx
 import React from 'react';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const TablaCompletados = ({ paquetes, renderInfoPagoReportado, handleVerQR, marcarComoNoPagado }) => {
+  
+  // 🛠️ Función para darle formato bonito a la fecha (Ej: "23 Abril 2026")
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr || fechaStr === '0000-00-00 00:00:00' || fechaStr === '0000-00-00' || fechaStr === 'NULL') {
+      return '—';
+    }
+    
+    try {
+      let parsedDate;
+      
+      if (fechaStr.includes('-') && fechaStr.includes(':')) {
+        parsedDate = parseISO(fechaStr.replace(' ', 'T'));
+      } else if (fechaStr.includes('/') && fechaStr.includes(',')) {
+        const [fechaPart] = fechaStr.split(',');
+        const [dia, mes, anio] = fechaPart.trim().split('/');
+        parsedDate = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+      } else if (fechaStr.includes('/')) {
+        const partes = fechaStr.split('/');
+        if (partes.length === 3) {
+          parsedDate = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
+        }
+      } else {
+        parsedDate = new Date(fechaStr);
+      }
+
+      if (!parsedDate || isNaN(parsedDate.getTime())) {
+        return fechaStr; // Si falla, devuelve la fecha cruda
+      }
+      
+      const fechaFormateada = format(parsedDate, 'dd MMMM yyyy', { locale: es });
+      return fechaFormateada.replace(/\b\w/g, l => l.toUpperCase());
+      
+    } catch (e) {
+      return fechaStr;
+    }
+  };
+
   return (
     <div className="wp-table-container">
       <h3>✅ Paquetes Completados</h3>
@@ -26,7 +66,9 @@ const TablaCompletados = ({ paquetes, renderInfoPagoReportado, handleVerQR, marc
                 <td>{p?.peso || '—'}</td>
                 <td>{p?.precio || p?.precio_usd || '—'}</td>
                 <td>{renderInfoPagoReportado(p)}</td>
-                <td>{p?.Fecha_5 || p?.Fecha_Origen || '—'}</td>
+                
+                {/* 🔥 Aquí se aplica el formato a la fecha de entrega */}
+                <td>{formatearFecha(p?.Fecha_5 || p?.Fecha_Origen)}</td>
                 
                 {/* 🔥 QR Bloqueado automáticamente porque ya se entregó */}
                 <td>

@@ -1,4 +1,7 @@
+// src/components/AdminPanel/Tablas/TablaPendientes.jsx
 import React from 'react';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const TablaPendientes = ({ 
   paquetes, 
@@ -24,6 +27,44 @@ const TablaPendientes = ({
   // 🔥 Función para verificar si el paquete tiene cliente asignado
   const tieneCliente = (paquete) => {
     return paquete?.cliente_uid && paquete?.cliente_uid !== 'NULL' && paquete?.cliente_uid !== null;
+  };
+
+  // 🛠️ Función para darle formato bonito a la fecha (Ej: "23 Abril 2026")
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr || fechaStr === '0000-00-00 00:00:00' || fechaStr === '0000-00-00' || fechaStr === 'NULL') {
+      return '—';
+    }
+    
+    try {
+      let parsedDate;
+      
+      if (fechaStr.includes('-') && fechaStr.includes(':')) {
+        parsedDate = parseISO(fechaStr.replace(' ', 'T'));
+      } else if (fechaStr.includes('/') && fechaStr.includes(',')) {
+        const [fechaPart] = fechaStr.split(',');
+        const [dia, mes, anio] = fechaPart.trim().split('/');
+        parsedDate = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+      } else if (fechaStr.includes('/')) {
+        const partes = fechaStr.split('/');
+        if (partes.length === 3) {
+          parsedDate = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
+        }
+      } else {
+        parsedDate = new Date(fechaStr);
+      }
+
+      if (!parsedDate || isNaN(parsedDate.getTime())) {
+        return fechaStr; // Si no logra entender la fecha, devuelve lo que venía en la base de datos
+      }
+      
+      // Aquí definimos el formato: "dd MMMM yyyy" da "23 abril 2026"
+      // Usamos capitalize para que quede "23 Abril 2026"
+      const fechaFormateada = format(parsedDate, 'dd MMMM yyyy', { locale: es });
+      return fechaFormateada.replace(/\b\w/g, l => l.toUpperCase());
+      
+    } catch (e) {
+      return fechaStr;
+    }
   };
 
   return (
@@ -92,7 +133,8 @@ const TablaPendientes = ({
                       </span>
                     )}
                   </td>
-                  <td>{p?.Fecha_Origen || '—'}</td>
+                  {/* 🔥 Aquí se aplica el formato a la fecha */}
+                  <td>{formatearFecha(p?.Fecha_Origen || p?.creado_en)}</td>
                   <td>
                     <button onClick={() => handleVerQR(p)} className="wp-btn-small">🖨️ QR</button>
                   </td>

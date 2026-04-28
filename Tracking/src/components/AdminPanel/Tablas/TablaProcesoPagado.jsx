@@ -1,6 +1,46 @@
+// src/components/AdminPanel/Tablas/TablaProcesoPagado.jsx
 import React from 'react';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const TablaProcesoPagado = ({ paquetes, renderInfoPagoReportado, handleVerQR, marcarComoNoPagado }) => {
+  
+  // 🛠️ Función para darle formato bonito a la fecha (Ej: "23 Abril 2026")
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr || fechaStr === '0000-00-00 00:00:00' || fechaStr === '0000-00-00' || fechaStr === 'NULL') {
+      return '—';
+    }
+    
+    try {
+      let parsedDate;
+      
+      if (fechaStr.includes('-') && fechaStr.includes(':')) {
+        parsedDate = parseISO(fechaStr.replace(' ', 'T'));
+      } else if (fechaStr.includes('/') && fechaStr.includes(',')) {
+        const [fechaPart] = fechaStr.split(',');
+        const [dia, mes, anio] = fechaPart.trim().split('/');
+        parsedDate = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+      } else if (fechaStr.includes('/')) {
+        const partes = fechaStr.split('/');
+        if (partes.length === 3) {
+          parsedDate = new Date(parseInt(partes[2]), parseInt(partes[1]) - 1, parseInt(partes[0]));
+        }
+      } else {
+        parsedDate = new Date(fechaStr);
+      }
+
+      if (!parsedDate || isNaN(parsedDate.getTime())) {
+        return fechaStr; // Si falla, devuelve la fecha cruda
+      }
+      
+      const fechaFormateada = format(parsedDate, 'dd MMMM yyyy', { locale: es });
+      return fechaFormateada.replace(/\b\w/g, l => l.toUpperCase());
+      
+    } catch (e) {
+      return fechaStr;
+    }
+  };
+
   return (
     <div className="wp-table-container">
       <h3>💚 Paquetes en Proceso (Pagados)</h3>
@@ -37,7 +77,9 @@ const TablaProcesoPagado = ({ paquetes, renderInfoPagoReportado, handleVerQR, ma
                   <td>{p?.precio || p?.precio_usd || '—'}</td>
                   <td>{renderInfoPagoReportado(p)}</td>
                   <td>{ultimaUbicacion}</td>
-                  <td>{p?.fecha_pago || '—'}</td>
+                  
+                  {/* 🔥 Aquí se aplica el formato a la fecha de pago */}
+                  <td>{formatearFecha(p?.fecha_pago)}</td>
                   
                   {/* Celda del QR dinámica */}
                   <td>

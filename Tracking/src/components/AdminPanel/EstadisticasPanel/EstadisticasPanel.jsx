@@ -1,10 +1,12 @@
 // src/components/AdminPanel/EstadisticasPanel.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { format, subMonths, parseISO } from 'date-fns';
+import { format, subMonths, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './EstadisticasPanel.css';
 
@@ -61,7 +63,6 @@ const parseFecha = (fechaStr) => {
       parsedDate = new Date(fechaStr); // Intento genérico de JavaScript
     }
 
-    // 🔥 LA MAGIA ESTÁ AQUÍ: Si es "Invalid Date", devolvemos null para que no rompa el filtro
     if (!parsedDate || isNaN(parsedDate.getTime())) {
       return null;
     }
@@ -73,8 +74,15 @@ const parseFecha = (fechaStr) => {
 };
 
 const EstadisticasPanel = ({ paquetes, estadisticas }) => {
-  const [filtroFecha, setFiltroFecha] = useState('6meses');
+  const hoy = new Date();
+  
+  // 🔥 ESTADOS PARA EL SELECTOR DE MES Y AÑO
+  const [mesSeleccionado, setMesSeleccionado] = useState(hoy.getMonth());
+  const [anioSeleccionado, setAnioSeleccionado] = useState(hoy.getFullYear());
+  
   const [paquetesFiltrados, setPaquetesFiltrados] = useState([]);
+  const [generandoPDF, setGenerandoPDF] = useState(false);
+  const panelRef = useRef(null);
 
   const isPagado = (p) => estaPagado(p.pagado);
 
@@ -102,61 +110,104 @@ const EstadisticasPanel = ({ paquetes, estadisticas }) => {
     return null;
   };
 
-  useEffect(() => {
-    filtrarPaquetesPorFecha();
-  }, [filtroFecha, paquetes]);
+  // 🔥 DETECTAR AÑOS DISPONIBLES EN LA BASE DE DATOS
+  const aniosDisponibles = useMemo(() => {
+    const years = new Set([hoy.getFullYear()]);
+    if (paquetes && paquetes.length > 0) {
+      paquetes.forEach(p => {
+        const f = parseFecha(getFechaPaquete(p));
+        if (f) years.add(f.getFullYear());
+      });
+    }
+    return Array.from(years).sort((a, b) => b - a); // Ordenar de más reciente a más viejo
+  }, [paquetes, hoy]);
 
-  const filtrarPaquetesPorFecha = () => {
+  // FILTRAR PAQUETES CUANDO CAMBIA EL MES O EL AÑO
+  useEffect(() => {
     if (!paquetes || paquetes.length === 0) {
       setPaquetesFiltrados([]);
       return;
     }
 
-    const hoy = new Date();
-    hoy.setHours(23, 59, 59, 999);
-    let fechaInicio;
-
-    switch (filtroFecha) {
-      case 'mes': fechaInicio = subMonths(hoy, 1); break;
-      case '3meses': fechaInicio = subMonths(hoy, 3); break;
-      case '6meses': fechaInicio = subMonths(hoy, 6); break;
-      case 'anio': fechaInicio = subMonths(hoy, 12); break;
-      default: fechaInicio = subMonths(hoy, 6);
-    }
-    fechaInicio.setHours(0, 0, 0, 0);
-
     const filtrados = paquetes.filter(p => {
       let fechaPaquete = getFechaPaquete(p);
       const fecha = parseFecha(fechaPaquete);
       
-      // 🛡️ SI NO PODEMOS LEER LA FECHA, LO DEJAMOS PASAR DE TODOS MODOS
-      if (!fecha) return true; 
+      // Si el paquete no tiene fecha, lo ignoramos para los reportes mensuales
+      if (!fecha) return false; 
       
-      const fechaMs = fecha.getTime();
-      return fechaMs >= fechaInicio.getTime() && fechaMs <= hoy.getTime();
+      return fecha.getFullYear() === parseInt(anioSeleccionado) && fecha.getMonth() === parseInt(mesSeleccionado);
     });
 
     setPaquetesFiltrados(filtrados);
+  }, [paquetes, mesSeleccionado, anioSeleccionado]);
+
+  // 🔥 PDF PROFESIONAL CON ENCABEZADO
+  const exportarPDF = async () => {
+    if (!panelRef.current) return;
+    setGenerandoPDF(true);
+    
+    try {
+      const canvas = await html2canvas(panelRef.current, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#111827' 
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'letter');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      
+      // Texto del Encabezado (Información del Reporte)
+      const nombreMes = format(new Date(anioSeleccionado, mesSeleccionado, 15), 'MMMM yyyy', { locale: es }).toUpperCase();
+      
+      pdf.setTextColor(212, 175, 55); // Color Dorado
+      pdf.setFontSize(22);
+      pdf.setFont("helvetica", "bold");
+      pdf.text('REPORTE DE OPERACIONES', pdfWidth / 2, 20, { align: 'center' });
+      
+      pdf.setTextColor(100, 100, 100); // Color Gris
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`PERÍODO: ${nombreMes}`, pdfWidth / 2, 28, { align: 'center' });
+      
+      // Línea separadora
+      pdf.setDrawColor(212, 175, 55);
+      pdf.setLineWidth(0.5);
+      pdf.line(15, 33, pdfWidth - 15, 33);
+      
+      // Pegar la foto del panel debajo de la línea
+      const pdfImgHeight = (canvas.height * (pdfWidth - 20)) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 10, 40, pdfWidth - 20, pdfImgHeight);
+      
+      pdf.save(`Reporte_${nombreMes.replace(/ /g, '_')}.pdf`);
+      
+    } catch (error) {
+      console.error("Error generando PDF", error);
+      alert("Hubo un error al generar el PDF. Revisa la consola.");
+    } finally {
+      setGenerandoPDF(false);
+    }
   };
 
+  // 🔥 GRÁFICA EVOLUTIVA (Muestra los 6 meses previos a la fecha elegida para dar contexto)
   const datosIngresosMensuales = () => {
     const meses = {};
-    const hoy = new Date();
+    const fechaBase = new Date(anioSeleccionado, mesSeleccionado, 15);
     
-    // Preparar los últimos meses vacíos para que la gráfica no se vea pelona
-    for (let i = 0; i <= 6; i++) {
-      const fecha = subMonths(hoy, i);
+    // Preparar los últimos 6 meses hacia atrás desde la fecha seleccionada
+    for (let i = 0; i <= 5; i++) {
+      const fecha = subMonths(fechaBase, i);
       const mesKey = format(fecha, 'MMM yyyy', { locale: es });
       meses[mesKey] = { mes: mesKey, ingresos: 0, paquetes: 0 };
     }
 
-    paquetesFiltrados.forEach(p => {
+    // Llenamos con los datos de la base de datos general (no solo el mes filtrado)
+    paquetes.forEach(p => {
       if (isPagado(p) && getPrecioNumero(p) > 0) {
         let fechaPaquete = getFechaPaquete(p);
         let fecha = parseFecha(fechaPaquete);
-        
-        // Si no tiene fecha válida, lo sumamos al mes actual
-        if (!fecha) fecha = new Date(); 
+        if (!fecha) return;
 
         const mesKey = format(fecha, 'MMM yyyy', { locale: es });
         if (meses[mesKey]) {
@@ -208,6 +259,7 @@ const EstadisticasPanel = ({ paquetes, estadisticas }) => {
     const tasaEntrega = totalPaquetesPagados > 0 ? (totalEntregados / totalPaquetesPagados) * 100 : 0;
 
     return {
+      totalRecaudado: totalPrecios.toFixed(2),
       promedio: promedio.toFixed(2),
       masCaro: paqueteMasCaro === 0 ? 'N/A' : `$${paqueteMasCaro.toFixed(2)}`,
       masBarato: paqueteMasBarato === Infinity ? 'N/A' : `$${paqueteMasBarato.toFixed(2)}`,
@@ -245,148 +297,198 @@ const EstadisticasPanel = ({ paquetes, estadisticas }) => {
   const resumen = resumenRapido();
   const distribucion = distribucionPagos();
 
-  if (paquetesFiltrados.length === 0) {
-    return (
-      <div className="estadisticas-panel">
-        <div className="no-data-message" style={{ textAlign: 'center', padding: '40px', color: '#A0AEC0' }}>
-          <p>📊 No hay paquetes registrados en este rango de fechas.</p>
-        </div>
-      </div>
-    );
-  }
+  // Lista de meses para el Select
+  const mesesNombres = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
 
   return (
     <div className="estadisticas-panel">
-      {/* FILTROS DE FECHA */}
-      <div className="filtros-fecha">
-        <button className={`filtro-fecha-btn ${filtroFecha === 'mes' ? 'active' : ''}`} onClick={() => setFiltroFecha('mes')}>Último mes</button>
-        <button className={`filtro-fecha-btn ${filtroFecha === '3meses' ? 'active' : ''}`} onClick={() => setFiltroFecha('3meses')}>3 meses</button>
-        <button className={`filtro-fecha-btn ${filtroFecha === '6meses' ? 'active' : ''}`} onClick={() => setFiltroFecha('6meses')}>6 meses</button>
-        <button className={`filtro-fecha-btn ${filtroFecha === 'anio' ? 'active' : ''}`} onClick={() => setFiltroFecha('anio')}>Último año</button>
+      
+      {/* HEADER: SELECTORES DE FECHA Y BOTÓN DE PDF */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+        
+        {/* 🔥 SELECTORES DINÁMICOS */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <select 
+            value={mesSeleccionado} 
+            onChange={(e) => setMesSeleccionado(e.target.value)}
+            style={{ padding: '10px', borderRadius: '6px', background: '#1A202C', color: '#fff', border: '1px solid #D4AF37', cursor: 'pointer', outline: 'none' }}
+          >
+            {mesesNombres.map((mes, index) => (
+              <option key={index} value={index}>{mes}</option>
+            ))}
+          </select>
+
+          <select 
+            value={anioSeleccionado} 
+            onChange={(e) => setAnioSeleccionado(e.target.value)}
+            style={{ padding: '10px', borderRadius: '6px', background: '#1A202C', color: '#fff', border: '1px solid #D4AF37', cursor: 'pointer', outline: 'none' }}
+          >
+            {aniosDisponibles.map(anio => (
+              <option key={anio} value={anio}>{anio}</option>
+            ))}
+          </select>
+        </div>
+
+        <button 
+          onClick={exportarPDF} 
+          disabled={generandoPDF || paquetesFiltrados.length === 0}
+          className="wp-btn-plus"
+          style={{ 
+            background: '#D4AF37', 
+            color: '#000', 
+            border: 'none', 
+            padding: '10px 20px', 
+            borderRadius: '6px', 
+            fontWeight: 'bold', 
+            cursor: generandoPDF || paquetesFiltrados.length === 0 ? 'not-allowed' : 'pointer',
+            opacity: generandoPDF || paquetesFiltrados.length === 0 ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          {generandoPDF ? '⏳ Generando PDF...' : '📥 Descargar Reporte PDF'}
+        </button>
       </div>
 
-      {/* RESUMEN RÁPIDO */}
-      <div className="resumen-rapido-grid">
-        <div className="resumen-card">
-          <div className="resumen-icono">💰</div>
-          <div className="resumen-info">
-            <div className="resumen-valor">${resumen.promedio}</div>
-            <div className="resumen-etiqueta">Promedio por paquete</div>
-          </div>
+      {paquetesFiltrados.length === 0 ? (
+        <div className="no-data-message" style={{ textAlign: 'center', padding: '60px 20px', background: '#111827', borderRadius: '10px', color: '#A0AEC0' }}>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>📁</div>
+          <h3>Sin datos registrados</h3>
+          <p>No se encontraron paquetes para {mesesNombres[mesSeleccionado]} de {anioSeleccionado}.</p>
         </div>
-        <div className="resumen-card">
-          <div className="resumen-icono">🏆</div>
-          <div className="resumen-info">
-            <div className="resumen-valor">{resumen.masCaro}</div>
-            <div className="resumen-etiqueta">Paquete más caro</div>
-          </div>
-        </div>
-        <div className="resumen-card">
-          <div className="resumen-icono">📦</div>
-          <div className="resumen-info">
-            <div className="resumen-valor">{resumen.masBarato}</div>
-            <div className="resumen-etiqueta">Paquete más barato</div>
-          </div>
-        </div>
-        <div className="resumen-card">
-          <div className="resumen-icono">✅</div>
-          <div className="resumen-info">
-            <div className="resumen-valor">{resumen.tasaEntrega}%</div>
-            <div className="resumen-etiqueta">Tasa de entrega</div>
-          </div>
-        </div>
-        <div className="resumen-card">
-          <div className="resumen-icono">📊</div>
-          <div className="resumen-info">
-            <div className="resumen-valor">{resumen.totalEntregados}/{resumen.totalPaquetes}</div>
-            <div className="resumen-etiqueta">Entregados / Pagados</div>
-          </div>
-        </div>
-      </div>
-
-      {/* GRÁFICO DE INGRESOS */}
-      <div className="grafico-container">
-        <h3>📈 Evolución de Ingresos</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={ingresosData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="mes" stroke="#A0AEC0" />
-            <YAxis stroke="#A0AEC0" />
-            <Tooltip contentStyle={{ backgroundColor: '#162032', borderColor: '#D4AF37' }} labelStyle={{ color: '#D4AF37' }} />
-            <Legend />
-            <Line type="monotone" dataKey="ingresos" name="Ingresos (USD)" stroke="#D4AF37" strokeWidth={2} dot={{ fill: '#D4AF37', r: 4 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="paquetes" name="Paquetes Pagados" stroke="#60a5fa" strokeWidth={2} dot={{ fill: '#60a5fa', r: 4 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* TOP CLIENTES Y DISTRIBUCIÓN DE PAGOS */}
-      <div className="two-columns">
-        <div className="top-clientes">
-          <h3>🏆 Top 5 Clientes</h3>
-          {clientes.length === 0 ? (
-            <p className="sin-datos" style={{ color: '#A0AEC0', padding: '20px' }}>No hay paquetes pagados suficientes</p>
-          ) : (
-            <table className="top-clientes-tabla">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Cliente</th>
-                  <th>Paquetes</th>
-                  <th>Total gastado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientes.map((cliente, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td>{cliente.nombre}</td>
-                    <td>{cliente.paquetes}</td>
-                    <td>${cliente.totalGastado.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div className="distribucion-pagos">
-          <h3>💳 Distribución de Pagos</h3>
-          {distribucion.length === 0 ? (
-            <p className="sin-datos" style={{ color: '#A0AEC0', padding: '20px' }}>No hay datos de pagos</p>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={distribucion}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {distribucion.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#162032', borderColor: '#D4AF37' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="leyenda-pagos">
-                {distribucion.map((item, i) => (
-                  <div key={i} className="leyenda-item">
-                    <span className="color-dot" style={{ backgroundColor: item.color }}></span>
-                    <span>{item.name}: {item.value}</span>
-                  </div>
-                ))}
+      ) : (
+        // 🔥 CONTENEDOR REF: Todo lo que esté aquí adentro saldrá en el PDF
+        <div ref={panelRef} style={{ background: '#111827', padding: '20px', borderRadius: '10px' }}>
+          
+          {/* RESUMEN RÁPIDO */}
+          <div className="resumen-rapido-grid">
+            <div className="resumen-card">
+              <div className="resumen-icono">💵</div>
+              <div className="resumen-info">
+                <div className="resumen-valor">${resumen.totalRecaudado}</div>
+                <div className="resumen-etiqueta">Total Recaudado USD</div>
               </div>
-            </>
-          )}
+            </div>
+            <div className="resumen-card">
+              <div className="resumen-icono">💰</div>
+              <div className="resumen-info">
+                <div className="resumen-valor">${resumen.promedio}</div>
+                <div className="resumen-etiqueta">Promedio por paquete</div>
+              </div>
+            </div>
+            <div className="resumen-card">
+              <div className="resumen-icono">🏆</div>
+              <div className="resumen-info">
+                <div className="resumen-valor">{resumen.masCaro}</div>
+                <div className="resumen-etiqueta">Paquete más caro</div>
+              </div>
+            </div>
+            <div className="resumen-card">
+              <div className="resumen-icono">✅</div>
+              <div className="resumen-info">
+                <div className="resumen-valor">{resumen.tasaEntrega}%</div>
+                <div className="resumen-etiqueta">Tasa de entrega</div>
+              </div>
+            </div>
+            <div className="resumen-card">
+              <div className="resumen-icono">📊</div>
+              <div className="resumen-info">
+                <div className="resumen-valor">{resumen.totalEntregados}/{resumen.totalPaquetes}</div>
+                <div className="resumen-etiqueta">Entregados / Pagados</div>
+              </div>
+            </div>
+          </div>
+
+          {/* GRÁFICO DE INGRESOS */}
+          <div className="grafico-container" style={{ marginTop: '20px' }}>
+            <h3>📈 Evolución de Ingresos (Últimos 6 meses)</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={ingresosData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="mes" stroke="#A0AEC0" />
+                <YAxis stroke="#A0AEC0" />
+                <Tooltip contentStyle={{ backgroundColor: '#162032', borderColor: '#D4AF37' }} labelStyle={{ color: '#D4AF37' }} />
+                <Legend />
+                <Line type="monotone" dataKey="ingresos" name="Ingresos (USD)" stroke="#D4AF37" strokeWidth={2} dot={{ fill: '#D4AF37', r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="paquetes" name="Paquetes Pagados" stroke="#60a5fa" strokeWidth={2} dot={{ fill: '#60a5fa', r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* TOP CLIENTES Y DISTRIBUCIÓN DE PAGOS */}
+          <div className="two-columns" style={{ marginTop: '20px' }}>
+            <div className="top-clientes">
+              <h3>🏆 Top 5 Clientes ({mesesNombres[mesSeleccionado]})</h3>
+              {clientes.length === 0 ? (
+                <p className="sin-datos" style={{ color: '#A0AEC0', padding: '20px' }}>No hay paquetes pagados suficientes</p>
+              ) : (
+                <table className="top-clientes-tabla">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Cliente</th>
+                      <th>Paquetes</th>
+                      <th>Total gastado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientes.map((cliente, index) => (
+                      <tr key={index}>
+                        <td>{index + 1}</td>
+                        <td>{cliente.nombre}</td>
+                        <td>{cliente.paquetes}</td>
+                        <td>${cliente.totalGastado.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="distribucion-pagos">
+              <h3>💳 Distribución de Pagos</h3>
+              {distribucion.length === 0 ? (
+                <p className="sin-datos" style={{ color: '#A0AEC0', padding: '20px' }}>No hay datos de pagos</p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={distribucion}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {distribucion.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#162032', borderColor: '#D4AF37' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="leyenda-pagos">
+                    {distribucion.map((item, i) => (
+                      <div key={i} className="leyenda-item">
+                        <span className="color-dot" style={{ backgroundColor: item.color }}></span>
+                        <span>{item.name}: {item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          
         </div>
-      </div>
+      )}
     </div>
   );
 };

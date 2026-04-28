@@ -236,8 +236,8 @@ function App() {
     <div className="app-container">
       <header className="app-header-vip">
         <div className="header-brand">
-          <h1>iGrafic360</h1>
-          <span className="header-subtitle">Tracking System | Laboratorio</span>
+          <h1>nvios</h1>
+          <span className="header-subtitle">Global Tracking</span>
         </div>
 
         {user && (

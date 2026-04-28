@@ -54,6 +54,7 @@ const StatusCard = ({
   trackingId,
   data,
   precioPaquete,
+  pesoPaquete,  // 🔥 NUEVO PROP
   pagadoInicial = false,
   metodoPagoInicial = null,
   referenciaBinanceInicial = null,
@@ -84,28 +85,21 @@ const StatusCard = ({
     ? parseFloat(String(precioPaquete).replace(/[^0-9.-]+/g, ""))
     : 0;
 
-  // 🔥 NUEVA VALIDACIÓN: Verificar si el paquete está pendiente de completar por el admin
+  // Validación: verificar si el paquete está pendiente de completar
   const estaPendienteDeCompletar = () => {
-    // Si no hay datos o el primer evento es "Pendiente"
-    if (!data || data.length === 0 || data[0]?.evento?.includes('Pendiente')) {
-      return true;
+    if (!data || data.length === 0) return true;
+    
+    const primerEvento = data[0]?.evento || '';
+    const tieneEventosValidos = data.length > 0 && !primerEvento.includes('Pendiente');
+    
+    if (tieneEventosValidos && precioPaquete && precioPaquete !== 'Pendiente') {
+      return false;
     }
     
-    // Si el precio está en "Pendiente" (admin no ha completado)
-    if (precioPaquete === 'Pendiente') {
-      return true;
-    }
-    
-    // Si hay datos pero el peso es "Pendiente" (admin no ha completado)
-    const tienePesoPendiente = data.some(item => item.peso === 'Pendiente');
-    if (tienePesoPendiente) {
-      return true;
-    }
-    
-    return false;
+    return true;
   };
 
-  // 🔥 Mostrar mensaje de espera si el paquete aún no ha sido completado por el admin
+  // Mostrar mensaje de espera si el paquete aún no ha sido completado
   if (estaPendienteDeCompletar()) {
     return (
       <div className="status-card-container">
@@ -120,7 +114,6 @@ const StatusCard = ({
   }
 
   const ultimoEvento = data[data.length - 1];
-  const eventoConPeso = data.find(item => item.peso && item.peso !== 'Pendiente') || ultimoEvento;
 
   const handleCalcularBs = async () => {
     if (montoUSDLimpio === 0) {
@@ -287,9 +280,14 @@ const StatusCard = ({
           <span className="detail-value">{trackingId}</span>
         </div>
 
+        {/* 🔥 PESO CORREGIDO - Usa el prop pesoPaquete */}
         <div className="detail-item">
           <span className="detail-label">Peso</span>
-          <span className="detail-value">{eventoConPeso.peso || 'Pendiente'}</span>
+          <span className="detail-value">
+            {pesoPaquete && pesoPaquete !== 'Pendiente' && pesoPaquete !== '' 
+              ? pesoPaquete 
+              : 'Pendiente'}
+          </span>
         </div>
 
         <div className="detail-item">

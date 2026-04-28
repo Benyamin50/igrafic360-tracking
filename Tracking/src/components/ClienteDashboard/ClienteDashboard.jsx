@@ -61,7 +61,7 @@ const ClienteDashboard = ({ user, uid }) => {
   const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
   const fotosCache = useRef({});
 
-  // Obtener el paquete seleccionado para su tipo_envio
+  // Obtener el paquete seleccionado para su tipo_envio y peso
   const paqueteSeleccionado = useMemo(() => {
     return paquetes.find(p => (p.tracking_id || p.id) === selectedPaquete);
   }, [paquetes, selectedPaquete]);
@@ -162,12 +162,9 @@ const ClienteDashboard = ({ user, uid }) => {
     }
   }, []);
 
-  // 🔥 SOLO ESTO CAMBIÓ - Limpiar el paquete anterior antes de cargar el nuevo
+  // Limpiar el paquete anterior antes de cargar el nuevo
   const verTracking = useCallback((id) => {
-    // Limpiar el paquete seleccionado actual
     setSelectedPaquete(null);
-    
-    // Pequeño delay para asegurar que React limpie el componente
     setTimeout(() => {
       setSelectedPaquete(id);
       cargarFotos(id);
@@ -177,6 +174,12 @@ const ClienteDashboard = ({ user, uid }) => {
   const obtenerPrecioPaquete = useCallback((trackingId) => {
     const paquete = paquetes.find(p => (p.tracking_id || p.id) === trackingId);
     return paquete?.precio || null;
+  }, [paquetes]);
+
+  // 🔥 NUEVA FUNCIÓN: Obtener el peso del paquete
+  const obtenerPesoPaquete = useCallback((trackingId) => {
+    const paquete = paquetes.find(p => (p.tracking_id || p.id) === trackingId);
+    return paquete?.peso || null;
   }, [paquetes]);
 
   const cargarMasPaquetes = useCallback(() => {
@@ -385,10 +388,12 @@ const ClienteDashboard = ({ user, uid }) => {
                 <>
                   <div className="client-tracking-grid">
                     <div className="client-tracking-left">
+                      {/* 🔥 AHORA PASAMOS pesoPaquete */}
                       <StatusCard 
                         trackingId={selectedPaquete} 
                         data={trackingData}
                         precioPaquete={obtenerPrecioPaquete(selectedPaquete)}
+                        pesoPaquete={obtenerPesoPaquete(selectedPaquete)}  // 🔥 NUEVO
                         pagadoInicial={obtenerPagadoReal(selectedPaquete)}
                         metodoPagoInicial={obtenerMetodoPago(selectedPaquete)}
                         referenciaBinanceInicial={obtenerReferenciaBinance(selectedPaquete)}

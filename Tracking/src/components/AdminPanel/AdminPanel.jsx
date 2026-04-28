@@ -1,5 +1,5 @@
 // src/components/AdminPanel/AdminPanel.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { ApiService, API_URL } from '../../services/api';
 import { usePaquetesAdmin } from '../../hooks/usePaquetesAdmin';
@@ -83,7 +83,87 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const [filtros, setFiltros] = useState({ busqueda: '', fechaInicio: '', fechaFin: '', estado: 'todos' });
 
   const [totalEmpleados, setTotalEmpleados] = useState(0);
-  const [totalEnvios, setTotalEnvios] = useState(0); // 🔥 CONTADOR DE CONTENEDORES
+  const [totalEnvios, setTotalEnvios] = useState(0);
+
+  // 🔥 SOLUCIÓN 1: Memorizar el menú para evitar el bucle infinito
+  const getMenuItems = useCallback(() => {
+    if (esSuperAdmin) {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'empleados', label: 'Empleados', icon: '👥' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'admin') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'contador') {
+      return [
+        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
+        { id: 'envios', label: 'Envíos', icon: '📦' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    if (userRol === 'empleado') {
+      return [
+        { id: 'envios', label: 'Envíos', icon: '📦' },
+        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
+        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
+        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
+        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
+        { id: 'completados', label: 'Completados', icon: '✅' },
+        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
+      ];
+    }
+    
+    return [];
+  }, [esSuperAdmin, userRol]);
+
+  const menuItems = useMemo(() => getMenuItems(), [getMenuItems]);
+  const [pestanaActiva, setPestanaActiva] = useState(menuItems.length > 0 ? menuItems[0].id : '');
+
+  // Validar acceso si cambian los permisos
+  useEffect(() => {
+    if (menuItems.length > 0) {
+      const tieneAcceso = menuItems.some(item => item.id === pestanaActiva);
+      if (!tieneAcceso) {
+        setPestanaActiva(menuItems[0].id);
+      }
+    }
+  }, [pestanaActiva, menuItems]);
+
+  // 🔥 SOLUCIÓN 2: Refresco de datos automático por pestaña (Protegido del bucle infinito)
+  useEffect(() => {
+    if (!primeraCarga) {
+      mutatePaquetes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pestanaActiva]);
 
   // Calcular estadisticas cuando cambian los paquetes
   useEffect(() => {
@@ -131,7 +211,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     });
   };
 
-  // 🔥 Cargar total de contenedores
   const cargarTotalEnvios = useCallback(async () => {
     try {
       const timestamp = Date.now();
@@ -202,9 +281,7 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
             }
           }
           
-          // 🔥 Cargar total de contenedores
           cargarTotalEnvios();
-          
           setPrimeraCarga(false);
         } else {
           setError('No hay sesion activa. Por favor, inicia sesion.');
@@ -219,10 +296,9 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
     verificarSesion();
   }, [cargarTotalEnvios]);
 
-  // Funcion para refrescar datos despues de acciones
   const refrescarDatos = useCallback(async () => {
     await mutatePaquetes();
-    await cargarTotalEnvios(); // 🔥 También recargar contador de contenedores
+    await cargarTotalEnvios();
   }, [mutatePaquetes, cargarTotalEnvios]);
 
   const marcarComoPagado = async (paquete) => { 
@@ -405,76 +481,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const handleVerQR = (paquete) => { if (paquete) setMostrarQR({ id: paquete.tracking_id || paquete.id }); };
   const paquetesFiltrados = (lista) => filtros.busqueda ? lista.filter(p => (p.tracking_id || p.id || '').toLowerCase().includes(filtros.busqueda.toLowerCase())) : lista;
 
-  const getMenuItems = () => {
-    if (esSuperAdmin) {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
-        { id: 'empleados', label: 'Empleados', icon: '👥' },
-        { id: 'envios', label: 'Envíos', icon: '📦' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    if (userRol === 'admin') {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'rendimiento', label: 'Rendimiento', icon: '⏱️' },
-        { id: 'envios', label: 'Envíos', icon: '📦' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    if (userRol === 'contador') {
-      return [
-        { id: 'estadisticas', label: 'Estadisticas', icon: '📊' },
-        { id: 'envios', label: 'Envíos', icon: '📦' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    if (userRol === 'empleado') {
-      return [
-        { id: 'envios', label: 'Envíos', icon: '📦' },
-        { id: 'sin-identificar', label: 'Sin Identificar', icon: '👻' },
-        { id: 'pendientes', label: 'Por Recibir', icon: '📌' },
-        { id: 'proceso-pagado', label: 'Proceso Pagado', icon: '💚' },
-        { id: 'proceso-no-pagado', label: 'Proceso No Pagado', icon: '⚠️' },
-        { id: 'completados', label: 'Completados', icon: '✅' },
-        { id: 'advertencia', label: 'Advertencia', icon: '🔴' },
-      ];
-    }
-    
-    return [];
-  };
-
-  const menuItems = getMenuItems();
-  const [pestanaActiva, setPestanaActiva] = useState(menuItems.length > 0 ? menuItems[0].id : '');
-
-  useEffect(() => {
-    if (menuItems.length > 0) {
-      const tieneAcceso = menuItems.some(item => item.id === pestanaActiva);
-      if (!tieneAcceso) {
-        setPestanaActiva(menuItems[0].id);
-      }
-    }
-  }, [userRol, esSuperAdmin, pestanaActiva, menuItems]);
-
   const renderInfoPagoReportado = (paquete) => {
     if (estaPagado(paquete.pagado)) return <span className="wp-badge wp-badge-success">Pagado</span>;
     const esBinance = paquete.metodo_pago === 'binance';
@@ -518,7 +524,6 @@ const AdminPanel = ({ onRegistroExitoso, onRolActualizado, userRol = 'admin', pe
   const pCompletados = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && estaPagado(p.pagado) && p.cliente_uid));
   const pAdvertencia = paquetesFiltrados(paquetes.filter(p => !esFantasma(p.es_fantasma) && p.Entregado && p.Entregado !== '' && !estaPagado(p.pagado) && p.cliente_uid));
 
-  // 🔥 MENÚ CON CONTADORES - AHORA INCLUYE ENVÍOS
   const menuItemsWithCounts = menuItems.map(item => {
     switch(item.id) {
       case 'empleados': return { ...item, count: totalEmpleados };
